@@ -1,18 +1,38 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { PageHeader, Col } from 'react-bootstrap';
+import './App.scss';
+import UserInput from './components/UserInput';
+import MarkdownPreview from './components/MarkdownPreview';
 
 class App extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {markdown: ''};
+
+    this.handleUserInput = this.handleUserInput.bind(this);
+  }
+
+  handleUserInput(e) {
+    e.preventDefault();
+    this.setState({
+      markdown: e.target.value
+    })
+  }
+
   render() {
+    const markdown = this.state.markdown;
+
     return (
       <div className="App">
-        <div className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h2>Welcome to React</h2>
-        </div>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
+        <PageHeader>React Markdown Previewer</PageHeader>
+        <Col xs={12} md={5} mdOffset={1}>
+          <UserInput
+            onUserInput={this.handleUserInput} />
+        </Col>
+        <Col xs={12} md={5} mdOffset={1}>
+          <MarkdownPreview
+            markdown={markdown} />
+        </Col>
       </div>
     );
   }
