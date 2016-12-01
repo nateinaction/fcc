@@ -1,5 +1,5 @@
 {
-  "name": "react-markdown-previewer",
+  "name": "react-leaderboard",
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
@@ -51,11 +51,10 @@
     "whatwg-fetch": "1.0.0"
   },
   "dependencies": {
-    "marked": "^0.3.6",
+    "axios": "^0.15.3",
     "react": "^15.4.1",
     "react-bootstrap": "^0.30.7",
-    "react-dom": "^15.4.1",
-    "react-textarea-autosize": "^4.0.5"
+    "react-dom": "^15.4.1"
   },
   "scripts": {
     "start": "node scripts/start.js",
