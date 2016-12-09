@@ -38,7 +38,6 @@ const EditIngredients = (props) => (
 )
 
 const EditRecipeForm = (props) => {
-  let input; 
   return (
     <form onSubmit={props.onAddRecipe}>
       <EditTitle />
