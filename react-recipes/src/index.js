@@ -2,7 +2,7 @@ import { createStore, combineReducers } from 'redux'
 import React, { PropTypes } from 'react';
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-import shortid from 'shortid';
+import uuidV4 from 'uuid/v4';
 import { PageHeader, Col, Button, ButtonToolbar, Well, Panel, ListGroup, ListGroupItem, FormGroup, ControlLabel, FormControl, Modal } from 'react-bootstrap';
 import './index.scss';
 
@@ -229,7 +229,7 @@ const SaveRecipeButton = (props) => (
   <Button
   	bsStyle="success"
   	onClick={() => {
-  		let id = (props.id === 'NEW') ? shortid.generate() : props.id;
+  		let id = (props.id === 'NEW') ? uuidV4() : props.id;
   		return props.onSaveClick(id, props.title, props.ingredients)
   	}}>
     Save
@@ -397,7 +397,7 @@ const App = (props) => (
 // provide 1 default recipe on initialization
 if (store.getState().recipes.length === 0) {
 	store.dispatch(saveRecipe(
-			shortid.generate(),
+			uuidV4(),
 			'Nate\'s banana pudding',
 			['bananas', 'nilla wafers', 'vanilla pudding mix']
 	))
