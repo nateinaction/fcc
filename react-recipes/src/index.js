@@ -123,60 +123,15 @@ const recipeApp = combineReducers({
  */
 
 // import store from local storage
-const persistedState = localStorage.getItem('_reduxState') ? JSON.parse(localStorage.getItem('_reduxState')) : {}
+const persistedState = localStorage.getItem('_nateinaction_reduxState') ? JSON.parse(localStorage.getItem('_nateinaction_reduxState')) : {}
 
 // initialize store
 let store = createStore(recipeApp, persistedState)
 
 // save store to local storage
 store.subscribe(()=>{
-  localStorage.setItem('_reduxState', JSON.stringify(store.getState()))
+  localStorage.setItem('_nateinaction_reduxState', JSON.stringify(store.getState()))
 })
-
-/*
- * Redux state to console log
- */
-
-/*
-// log initial state
-console.log('initial state')
-console.log(store.getState())
-// log on change
-store.subscribe(() =>
-  console.log(store.getState())
-)
-*/
-
-/*
-// Dispatch some actions
-console.log('add a recipe')
-store.dispatch(addRecipe(
-		0,
-		'Nate\'s banana pudding',
-		['bananas', 'nilla wafers', 'vanilla pudding mix']
-))
-console.log('add a second recipe')
-store.dispatch(addRecipe(
-		1,
-    'Nate\'s famous bagels',
-    ['a bagel', 'plentiful cream cheese']
-))
-console.log('edit a recipe')
-store.dispatch(editRecipe(
-		0,
-		'Nate\'s BIG BAD BANANA PUDDING',
-		['BANANAS', 'nilla wafers', 'vanilla pudding mix']
-))
-console.log('delete a recipe')
-store.dispatch(deleteRecipe(1))
-console.log('show modal')
-store.dispatch(showModal())
-console.log('hide modal')
-store.dispatch(hideModal())
-
-// Stop listening to state updates
-unsubscribe()
-*/
 
 /*
  * React Presentational Components
