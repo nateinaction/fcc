@@ -1,176 +1,149 @@
-import React, { Component, PropTypes } from 'react';
-import ReactDOM from 'react-dom';
-//import { Provider } from 'react-redux'
-//import { createStore } from 'redux'
-import { PageHeader, Col, Button, Well, Panel, ListGroup, ListGroupItem, FormGroup, ControlLabel, FormControl, Modal } from 'react-bootstrap';
-import './index.scss';
+//import React, { Component, PropTypes } from 'react';
+//import { render } from 'react-dom';
+//import { Provider, connect } from 'react-redux'
+import { createStore, combineReducers } from 'redux'
 
-const EditRecipeButton = (props) => (
-  <Button onClick={props.onEditRecipe}>
-    Edit
-  </Button>
-)
+/*
+{
+	recipes: [{
+		id: 0,
+		title: 'Nate\'s banana pudding',
+		ingredients: ['bananas', 'nilla wafers', 'vanilla pudding mix']
+	},
+	{
+		id: 1,
+    title: 'Nate\'s famous bagels',
+    ingredients: ['a bagel', 'plentiful cream cheese']
+	}],
+	modal: {
+		showModal: false
+	}
+}
+*/
 
-const DeleteRecipeButton = (props) => (
-  <Button bsStyle="danger" onClick={props.onDeleteRecipe}>
-    Delete
-  </Button>
-)
+/*
+ * Redux Action Creators
+ */
 
-const SaveRecipeButton = (props) => (
-  <Button type='submit' bsStyle="success" onClick={props.onSaveRecipe}>
-    Save
-  </Button>
-)
+const addRecipe = (id, title, ingredients) => ({
+	type: 'ADD_RECIPE',
+	id,
+	title,
+	ingredients
+})
 
-const EditTitle = (props) => (
-  <FormGroup controlId='Title'>
-    <ControlLabel>Title</ControlLabel>
-    <FormControl type='input' placeholder='Recipe Title' />
-  </FormGroup>
-)
+const editRecipe = (id, title, ingredients) => ({
+	type: 'EDIT_RECIPE',
+	id,
+	title,
+	ingredients
+})
 
-const EditIngredients = (props) => (
-  <FormGroup controlId='Ingredients'>
-    <ControlLabel>Ingredients</ControlLabel>
-    <FormControl type='textarea' placeholder='Ingredients separated by commas' />
-  </FormGroup>
-)
+const deleteRecipe = (id) => ({
+	type: 'DELETE_RECIPE',
+	id
+})
 
-const EditRecipeForm = (props) => (
-  <form>
-    <EditTitle />
-    <EditIngredients />
-    <SaveRecipeButton />
-  </form>
-)
+const showModal = () => ({
+	type: 'SHOW_MODAL',
+})
 
-const EditRecipeModal = (props) => (
-  <Modal show={props.showModal} onHide={props.onHide}>
-    <Modal.Header closeButton>
-      <Modal.Title>Edit Recipe</Modal.Title>
-    </Modal.Header>
-    <Modal.Body>
-      <EditRecipeForm />
-    </Modal.Body>
-  </Modal>
-)
+const hideModal = () => ({
+	type: 'HIDE_MODAL',
+})
 
-const Ingredient = (props) => (
-  <ListGroupItem>{props.ingredient}</ListGroupItem>
-)
-Ingredient.propTypes = {
-  ingredient: PropTypes.string.isRequired
+/*
+ * Redux Reducers
+ */
+
+const recipes = (state = [], action) => {
+	switch (action.type) {
+		case 'ADD_RECIPE':
+			return [
+				...state,
+				{
+					id: action.id,
+					title: action.title,
+					ingredients: action.ingredients
+				}
+			]
+		case 'EDIT_RECIPE':
+			return state.map((recipe, id) => {
+				if (id === action.id) {
+					return Object.assign({}, recipe, {
+ 						title: action.title,
+						ingredients: action.ingredients
+      		})
+				}
+				return recipe
+			})
+		case 'DELETE_RECIPE':
+			return state.filter(recipe => recipe.id !== action.id)
+		default:
+			return state
+	}
 }
 
-const IngredientsList = (props) => {
-
-  if (props.ingredients.length === 0) {
-    return <ListGroupItem>Add some ingredients!</ListGroupItem>
-  }
-
-  return (
-    <ListGroup fill>
-      {props.ingredients.map((ingredient) => {
-        return (
-          <Ingredient key={ingredient} ingredient={ingredient} />
-        )
-      })}
-    </ListGroup>
-  )
-}
-IngredientsList.propTypes = {
-  ingredients: PropTypes.array.isRequired
+const modal = (state = false, action) => {
+	switch (action.type) {
+		case 'SHOW_MODAL':
+			return true
+		case 'HIDE_MODAL':
+			return false
+		default:
+			return state
+	}
 }
 
-const RecipesContainer = (props) => (
-  <Well>
-    {props.recipes.map((recipe, index) => {
-      return (
-        <Panel key={index} header={recipe.title} collapsible bsStyle='info'>
-          <h4>Ingredients</h4>
-          <IngredientsList ingredients={recipe.ingredients} />
-          <Col xs={12} md={1}>
-            <DeleteRecipeButton />
-          </Col>
-          <Col xs={12} md={1}>
-            <EditRecipeButton  />
-          </Col>
-        </Panel>
-      )
-    })}
-  </Well>
-)
-RecipesContainer.propTypes = {
-  recipes: PropTypes.array.isRequired
-}
+const recipeApp = combineReducers({
+	recipes,
+	modal
+})
 
-const AddRecipeButton = (props) => (
-  <Button bsStyle="primary" onClick={props.onAddRecipe}>
-    Add Recipe
-  </Button>
-)
-AddRecipeButton.propTypes = {
-  onAddRecipe: PropTypes.func.isRequired
-}
+/*
+ * Redux Store
+ */
 
+let store = createStore(recipeApp)
 
-const Header = (props) => (
-  <PageHeader>React Recipe Book w/ Local Storage</PageHeader>
+/*
+ * Redux state to console log
+ */
+
+// log initial state
+console.log('initial state')
+console.log(store.getState())
+// log on change
+let unsubscribe = store.subscribe(() =>
+  console.log(store.getState())
 )
 
-class App extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      recipes: [{
-        title: 'Nate\'s famous bagels',
-        ingredients: ['1 bagel', 'plentiful cream cheese']
-      },
-      {
-        title: 'Waffels',
-        ingredients: ['1 waffel', 'Maple Syrup']
-      }],
-      showModal: false,
-      isLoading: true
-    }
-    this.handleAddRecipe = this.handleAddRecipe.bind(this);
-    this.handleHideModal = this.handleHideModal.bind(this);
-  }
+// Dispatch some actions
+console.log('add a recipe')
+store.dispatch(addRecipe(
+		0,
+		'Nate\'s banana pudding',
+		['bananas', 'nilla wafers', 'vanilla pudding mix']
+))
+console.log('add a second recipe')
+store.dispatch(addRecipe(
+		1,
+    'Nate\'s famous bagels',
+    ['a bagel', 'plentiful cream cheese']
+))
+console.log('edit a recipe')
+store.dispatch(editRecipe(
+		0,
+		'Nate\'s BIG BAD BANANA PUDDING',
+		['BANANAS', 'nilla wafers', 'vanilla pudding mix']
+))
+console.log('delete a recipe')
+store.dispatch(deleteRecipe(1))
+console.log('show modal')
+store.dispatch(showModal())
+console.log('hide modal')
+store.dispatch(hideModal())
 
-  componentDidMount() {
-    this.setState({
-      isLoading: false
-    })
-  }
+// Stop listening to state updates
+unsubscribe()
 
-  handleHideModal() {
-    this.setState({
-      showModal: false
-    })
-  }
-
-  handleAddRecipe() {
-    this.setState({
-      showModal: true
-    })
-  }
-
-  render() {
-    return (
-      <div className="App">
-        <Header />
-        <Col xs={12} md={8} mdOffset={2}>
-          <RecipesContainer recipes={this.state.recipes} />
-          <AddRecipeButton onAddRecipe={this.handleAddRecipe} />
-          <EditRecipeModal showModal={this.state.showModal} onHide={this.handleHideModal} />
-        </Col>
-      </div>
-    );
-  }
-}
-
-ReactDOM.render(
-  <App />,
-  document.getElementById('root')
-);
