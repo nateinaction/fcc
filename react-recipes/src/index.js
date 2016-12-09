@@ -7,27 +7,6 @@ import { PageHeader, Col, Button, ButtonToolbar, Well, Panel, ListGroup, ListGro
 import './index.scss';
 
 /*
-{
-	recipes: [{
-		id: 0,
-		title: 'Nate\'s banana pudding',
-		ingredients: ['bananas', 'nilla wafers', 'vanilla pudding mix']
-	},
-	{
-		id: 1,
-    title: 'Nate\'s famous bagels',
-    ingredients: ['a bagel', 'plentiful cream cheese']
-	}],
-	modal: {
-		showModal: false,
-		id: 'blah',
-		workingTitle: 'blah'
-		workingIngredients: ['blah', 'blah']
-	}
-}
-*/
-
-/*
  * Redux Action Creators
  */
 
@@ -140,15 +119,25 @@ const recipeApp = combineReducers({
 })
 
 /*
- * Redux Store
+ * Redux Store & Local Storage
  */
 
-let store = createStore(recipeApp)
+// import store from local storage
+const persistedState = localStorage.getItem('_reduxState') ? JSON.parse(localStorage.getItem('_reduxState')) : {}
+
+// initialize store
+let store = createStore(recipeApp, persistedState)
+
+// save store to local storage
+store.subscribe(()=>{
+  localStorage.setItem('_reduxState', JSON.stringify(store.getState()))
+})
 
 /*
  * Redux state to console log
  */
 
+/*
 // log initial state
 console.log('initial state')
 console.log(store.getState())
@@ -156,6 +145,7 @@ console.log(store.getState())
 store.subscribe(() =>
   console.log(store.getState())
 )
+*/
 
 /*
 // Dispatch some actions
@@ -403,11 +393,15 @@ const App = (props) => (
 	  </Col>
   </div>
 )
-store.dispatch(saveRecipe(
-		shortid.generate(),
-		'Nate\'s banana pudding',
-		['bananas', 'nilla wafers', 'vanilla pudding mix']
-))
+
+// provide 1 default recipe on initialization
+if (store.getState().recipes.length === 0) {
+	store.dispatch(saveRecipe(
+			shortid.generate(),
+			'Nate\'s banana pudding',
+			['bananas', 'nilla wafers', 'vanilla pudding mix']
+	))
+}
 
 /*
  * React Dom
