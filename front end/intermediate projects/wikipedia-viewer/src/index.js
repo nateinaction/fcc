@@ -163,7 +163,11 @@ const RandomButton = (props) => (
 )
 
 const SearchBar = (props) => (
-	<form>
+	<form
+		onSubmit={(e) => {
+			e.preventDefault()
+			return props.handleFetchArticles(props.searchField)
+		}}>
 		<FormGroup controlId='Search'>
 			<ControlLabel>Search</ControlLabel>
 			<InputGroup>
@@ -177,10 +181,10 @@ const SearchBar = (props) => (
 		    <InputGroup.Button>
 		    	<SearchButton searchField={props.searchField} onFetchArticles={props.handleFetchArticles} />
 		    	<RandomButton />
-    		</InputGroup.Button>
+	  		</InputGroup.Button>
 			</InputGroup>
 	  </FormGroup>
-	</form>
+  </form>
 )
 SearchBar.proptypes = {
 	handleModifySearch: PropTypes.func.isRequired,
