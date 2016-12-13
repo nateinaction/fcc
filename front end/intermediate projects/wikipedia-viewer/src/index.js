@@ -1,9 +1,9 @@
-import thunkMiddleware from 'redux-thunk'
 import { createStore, combineReducers, applyMiddleware } from 'redux'
-import axios from 'axios';
+import thunkMiddleware from 'redux-thunk'
 import React, { PropTypes } from 'react';
 import { render } from 'react-dom';
 import { Provider, connect } from 'react-redux'
+import axios from 'axios';
 import { PageHeader, Col, Button, ListGroup, ListGroupItem, FormGroup, ControlLabel, FormControl, InputGroup } from 'react-bootstrap';
 import './index.scss';
 
