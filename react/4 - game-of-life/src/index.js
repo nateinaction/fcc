@@ -2,7 +2,7 @@ import { createStore, combineReducers } from 'redux'
 import React, { Component, PropTypes } from 'react';
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-//import uuidV4 from 'uuid/v4';
+import uuidV4 from 'uuid/v4';
 import { Navbar, Nav, NavItem, Glyphicon } from 'react-bootstrap';
 import './index.scss';
 
@@ -10,7 +10,7 @@ import './index.scss';
 {
 	play: true,
 	generation: 0,
-	speed: 1000,
+	interval: 1000,
 	gameBoard: [{ // totally up in the air
 		id: '3759'
 		state: 'child',
@@ -44,6 +44,16 @@ const nextGeneration = () => ({
 	type: 'NEXT_GENERATION'
 })
 
+const newGameBoard = (gameBoard) => ({
+	type: 'NEW_GAME_BOARD',
+	gameBoard
+})
+
+const deathClick = (id) => ({
+	type: 'DEATH_CLICK',
+	id
+})
+
 /*
  * Redux Reducers
  */
@@ -72,8 +82,19 @@ const generation = (state = 0, action) => {
 	}
 }
 
-const speed = (state = 500, action) => {
+const interval = (state = 500, action) => {
 	switch (action.type) {
+		default:
+			return state
+	}
+}
+
+const gameBoard = (state = [], action) => {
+	switch (action.type) {
+		case 'NEW_GAME_BOARD':
+			return action.gameBoard
+		case 'CLEAR':
+			return []
 		default:
 			return state
 	}
@@ -82,7 +103,8 @@ const speed = (state = 500, action) => {
 const gameOfLifeApp = combineReducers({
 	play,
 	generation,
-	speed
+	interval,
+	gameBoard
 })
 
 /*
@@ -92,24 +114,55 @@ const gameOfLifeApp = combineReducers({
 let store = createStore(gameOfLifeApp)
 
 /*
+ * Additional Game Logic
+ */
+
+// Generate game board
+const generateGameBoard = () => {
+	let gameBoard = [];
+	for (let n = 0; n < 54; n++) {
+		let tile = {
+			id: uuidV4(),
+			state: (Math.random() > 0.5) ? 'child' : 'dead'
+		}
+		gameBoard.push(tile)
+	}
+	//console.log(gameBoard)
+	store.dispatch(newGameBoard(gameBoard))
+}
+generateGameBoard();
+
+/*
  * React Presentational Components
  */
 
-const GameTile = (props) => (
-	<div className='game-tile' />
-)
+const GameTile = (props) => {
+	if (props.lifeCycleStage === 'adult') {
+		return (
+			<div
+				className='adult'
+				onClick={props.handleDeathClick(props.id)} />
+		)
+	} else if (props.lifeCycleStage === 'child') {
+		return (
+			<div
+				className='child'
+				onClick={props.handleDeathClick(props.id)} />
+		)
+	} else {
+		return (
+			<div
+				className='dead'
+				onClick={props.handleLifeClick(props.id)} />
+		)
+	}
+}
 
 const GameBoard = (props) => (
 	<div className='game-board'>
-		{props.tiles.map((tile, index) => {
-			if (tile === 'adult') {
-				return <GameTile className='adult' />
-			} else if (tile === 'child') {
-				return <GameTile className='child' />
-			} else {
-				return <GameTile className='dead' />
-			}
-		})}
+		{props.gameBoard.map((tile, index) => (
+			<GameTile key={tile.id} id={tile.id} lifeCycleStage={tile.lifeCycleStage} />
+		))}
 	</div>
 )
 
@@ -130,27 +183,24 @@ const ClearButton = (props) => (
 
 
 class GenerationControl extends Component {
-	componentDidMount() {
-		//this.generationTimer = setInterval(this.props.handleNextGeneration, this.props.speed);
-	}
-
 	componentWillUnmount() {
-		clearInterval(this.generationTimer)
+		clearInterval(this.getGeneration)
 	}
 
 	render() {
 		if (this.props.play) {
-			clearInterval(this.generationTimer)
-			this.generationTimer = setInterval(this.props.handleNextGeneration, this.props.speed);
+			clearInterval(this.getGeneration)
+			this.getGeneration = setInterval(this.props.handleNextGeneration, this.props.interval)
 		} else {
-			clearInterval(this.generationTimer)
+			clearInterval(this.getGeneration)
 		}
+
 		return <Navbar.Text><strong>Generation:</strong> {this.props.generation}</Navbar.Text>
 	}
 }
 GenerationControl.propTypes =  {
 	play: PropTypes.bool.isRequired,
-	speed: PropTypes.number.isRequired,
+	interval: PropTypes.number.isRequired,
 	generation: PropTypes.number.isRequired,
 	handleNextGeneration: PropTypes.func.isRequired
 }
@@ -174,7 +224,7 @@ const ControlBar = (props) => (
       </Nav>
       <GenerationControl
       	play={props.play}
-      	speed={props.speed}
+      	interval={props.interval}
       	generation={props.generation}
       	handleNextGeneration={props.handleNextGeneration} />
     </Navbar.Collapse>
@@ -187,7 +237,7 @@ const ControlBar = (props) => (
 
 const mapStateToProps = (state) => ({
 	play: state.play,
-	speed: state.speed,
+	interval: state.interval,
 	generation: state.generation
 })
 
@@ -211,12 +261,28 @@ const ControlBarContainer = connect(
 	mapDispatchToProps
 )(ControlBar)
 
+const mapStateToPropsTwo = (state) => ({
+	gameBoard: state.gameBoard
+})
+
+const mapDispatchToPropsTwo = (dispatch) => ({
+
+})
+
+const GameBoardContainer = connect(
+	mapStateToPropsTwo,
+	mapDispatchToPropsTwo
+)(GameBoard)
+
 /*
  * React Root Component
  */
 
 const App = (props) => (
-	<ControlBarContainer />
+	<div id='App'>
+		<GameBoardContainer />
+		<ControlBarContainer />
+	</div>
 )
 
 /*

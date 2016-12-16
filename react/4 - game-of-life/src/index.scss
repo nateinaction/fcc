@@ -11,3 +11,25 @@ h1 {
 	font-size: 18px;
 }
 
+.game-board {
+	width: 300px;
+	font-size: 0;
+	line-height: 0;
+}
+.game-tile {
+	height: 50px;
+	width: 50px;
+	display: inline-block;
+}
+.child {
+	@extend .game-tile;
+	background-color: salmon;
+}
+.adult {
+	@extend .game-tile;
+	background-color: red;
+}
+.dead {
+	@extend .game-tile;
+	background-color: black;
+}
