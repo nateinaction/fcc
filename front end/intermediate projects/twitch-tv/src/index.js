@@ -10,6 +10,22 @@ import './index.scss';
 //import { PageHeader, Col, ListGroup, ListItem } from 'react-bootstrap';
 
 /*
+const keepTrying = (otherArgs, promise) => {
+	promise = promise ? promise : new Promise()
+	
+	// try doing the important thing
+	
+	if(success) {
+		promise.resolve(result);
+	} else {
+		setTimeout(function() {
+			keepTrying(otherArgs, promise);
+		}, retryInterval);
+	}
+}
+*/
+
+/*
  * Example Redux Object
  */
 

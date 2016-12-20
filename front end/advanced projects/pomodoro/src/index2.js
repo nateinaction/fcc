@@ -11,10 +11,18 @@ import './index.scss';
  */
 /*
 {
-	entry: 44,
-	operation: 'multiply',
-	total: 220,
-	showTotal: true
+	play: true,
+	visibleTimer: 'pomodoro', // or 'shortBreak' or 'longBreak'
+	timeRemaining: 24,
+	pomodoro: {
+		timeSet: 42 // (in minutes)
+	},
+	shortBreak: {
+		timeSet: 13
+	},
+	longBreak: {
+		timeSet: 13
+	}
 }
 */
 
@@ -22,7 +30,6 @@ import './index.scss';
  * Redux Action Creators
  */
 
-// clear
 const allClear = () => ({
 	type: 'ALL_CLEAR'
 })
@@ -31,16 +38,25 @@ const clearEntry = () => ({
 	type: 'CLEAR_ENTRY'
 })
 
-// set
+const setOperation = (operation) => ({
+	type: 'SET_OPERATION',
+	operation
+})
+
 const setEntry = (entry) => ({
 	type: 'SET_ENTRY',
 	entry
 })
 
-const setOperation = (operation) => ({
-	type: 'SET_OPERATION',
-	operation
-})
+const appendToEntry = (input) => {
+	return (dispatch, getState) => {
+    const state = getState()
+    let entry = state.entry
+    entry += input.toString()
+		entry = parseInt(entry, 10)
+		return dispatch(setEntry(entry))
+	}
+}
 
 const setTotal = (total, operation) => {
 	operation = operation ? operation : null;
@@ -51,7 +67,6 @@ const setTotal = (total, operation) => {
 	})
 }
 
-// operations
 const addToTotal = (entry, operation) => ({
 	type: 'ADD_TO_TOTAL',
 	entry,
@@ -76,18 +91,6 @@ const divideFromTotal = (entry, operation) => ({
 	operation
 })
 
-// async with thunk
-const appendToEntry = (input) => {
-	return (dispatch, getState) => {
-    const state = getState()
-    let entry = state.entry
-    entry += input.toString()
-		entry = parseInt(entry, 10)
-
-		return dispatch(setEntry(entry))
-	}
-}
-
 const performOperation = (operation) => {
 	return (dispatch, getState) => {
     const state = getState()
@@ -111,10 +114,16 @@ const performOperation = (operation) => {
 	}
 }
 
+const totalToEntry = (total) => ({
+	type: 'TOTAL_TO_ENTRY',
+	total
+})
+
 const showTotal = () => {
 	return (dispatch, getState) => {
-		const state = getState()
-		dispatch(performOperation(state.operation))
+		dispatch(performOperation(null))
+    const state = getState()
+    dispatch(totalToEntry(state.total))
   }
 }
 
@@ -134,6 +143,8 @@ const entry = (state = 0, action) => {
 			return 0
 		case 'SET_ENTRY':
 			return action.entry
+		case 'TOTAL_TO_ENTRY':
+			return action.total
 		default:
 			return state
 	}
@@ -142,6 +153,8 @@ const entry = (state = 0, action) => {
 const operation = (state = null, action) => {
 	switch (action.type) {
 		case 'ALL_CLEAR':
+		case 'CLEAR_ENTRY':
+		case 'TOTAL_TO_ENTRY':
 			return null
 		case 'ADD_TO_TOTAL':
 		case 'SUBTRACT_FROM_TOTAL':
@@ -158,6 +171,7 @@ const operation = (state = null, action) => {
 const total = (state = 0, action) => {
 	switch (action.type) {
 		case 'ALL_CLEAR':
+		case 'TOTAL_TO_ENTRY':
 			return 0
 		case 'ADD_TO_TOTAL':
 			return state += action.entry
@@ -174,30 +188,10 @@ const total = (state = 0, action) => {
 	}
 }
 
-const displayTotal = (state = true, action) => {
-	switch (action.type) {
-		case 'ALL_CLEAR':
-		case 'ADD_TO_TOTAL':
-		case 'SUBTRACT_FROM_TOTAL':
-		case 'MULTIPLY_WITH_TOTAL':
-		case 'DIVIDE_FROM_TOTAL':
-		case 'SET_TOTAL':
-		case 'SHOW_TOTAL':
-			return true
-		case 'CLEAR_ENTRY':
-		case 'SET_ENTRY':
-		case 'SHOW_ENTRY':
-			return false
-		default:
-			return state
-	}
-}
-
 const calculatorApp = combineReducers({
 	entry,
 	operation,
-	total,
-	displayTotal
+	total
 })
 
 /*
@@ -278,9 +272,9 @@ ButtonNumber.propTypes = {
 }
 
 const CalculatorDisplay = (props) => (
-	<Col className='calculator-column' xs={12} md={6} mdOffset={3}>
+	<Col xs={12} md={6} mdOffset={3}>
 		<Well className='lead text-right'>
-			{(props.displayTotal) ? props.total : props.entry}
+			{props.entry}
 		</Well>
 	</Col>
 )
@@ -290,26 +284,26 @@ CalculatorDisplay.propTypes = {
 
 const CalculatorButtons = (props) => (
 	<Col id='calculator-buttons' xs={12} md={6} mdOffset={3}>
-  	<Col className='calculator-column' xs={3}>
+  	<Col xs={3}>
   		<ButtonAC onClick={props.handleAllClearClick} />
   		<ButtonNumber number={7} onClick={props.handleAppendToEntry} />
   		<ButtonNumber number={4} onClick={props.handleAppendToEntry} />
   		<ButtonNumber number={1} onClick={props.handleAppendToEntry} />
   		<ButtonNumber number={0} onClick={props.handleAppendToEntry} />
   	</Col>
-  	<Col className='calculator-column' xs={3}>
+  	<Col xs={3}>
   		<ButtonCE onClick={props.handleClearEntryClick} />
   		<ButtonNumber number={8} onClick={props.handleAppendToEntry} />
   		<ButtonNumber number={5} onClick={props.handleAppendToEntry} />
   		<ButtonNumber number={2} onClick={props.handleAppendToEntry} />
   	</Col>
-  	<Col className='calculator-column' xs={3}>
+  	<Col xs={3}>
   		<ButtonEquals value={props.value} operator={props.operator} total={props.total} onClick={props.handleShowTotal} />
   		<ButtonNumber number={9} onClick={props.handleAppendToEntry} />
   		<ButtonNumber number={6} onClick={props.handleAppendToEntry} />
   		<ButtonNumber number={3} onClick={props.handleAppendToEntry} />
   	</Col>
-  	<Col className='calculator-column' xs={3}>
+  	<Col xs={3}>
   		<ButtonOperation visualSymbol='+' operation='add' operationState={props.operation} onClick={props.handlePerformOperation} />
  			<ButtonOperation visualSymbol='–' operation='subtract' operationState={props.operation} onClick={props.handlePerformOperation} />
 			<ButtonOperation visualSymbol='x' operation='multiply' operationState={props.operation} onClick={props.handlePerformOperation} />
@@ -322,8 +316,7 @@ CalculatorButtons.propTypes = {
 	handleAllClearClick: PropTypes.func.isRequired,
 	handleClearEntryClick: PropTypes.func.isRequired,
 	handleAppendToEntry: PropTypes.func.isRequired,
-	handlePerformOperation: PropTypes.func.isRequired,
-	handleShowTotal: PropTypes.func.isRequired
+	handlePerformOperation: PropTypes.func.isRequired
 }
 
 /*
@@ -358,9 +351,7 @@ const CalculatorButtonsContainer = connect(
 )(CalculatorButtons)
 
 const mapStateToPropsTwo = (state) => ({
-	entry: state.entry,
-	total: state.total,
-	displayTotal: state.displayTotal
+	entry: state.entry
 })
 
 const CalculatorDisplayContainer = connect(
@@ -371,7 +362,7 @@ const CalculatorDisplayContainer = connect(
 const App = (props) => (
 	<div className="App">
 	  <Header />
-	  <Col id='calculator' xs={12} md={8} mdOffset={2}>
+	  <Col xs={12} md={8} mdOffset={2}>
 	  	<CalculatorDisplayContainer />
 	  	<CalculatorButtonsContainer />
 	  </Col>
@@ -397,6 +388,7 @@ console.log('initial state')
 console.log(store.getState())
 store.subscribe(() => console.log(store.getState()))
 */
+
 /*
  * Redux behavior tests
  */
@@ -440,3 +432,4 @@ store.dispatch(showTotal())
 console.log('entry: 7')
 store.dispatch(appendToEntry(7))
 */
+

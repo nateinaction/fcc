@@ -1,4 +1,5 @@
-import { createStore, combineReducers } from 'redux'
+import { createStore, combineReducers, applyMiddleware } from 'redux'
+import thunk from 'redux-thunk'
 import React, { Component, PropTypes } from 'react';
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
@@ -10,19 +11,42 @@ import './index.scss';
 {
 	play: true,
 	generation: 0,
-	interval: 1000,
-	gameBoard: [{ // totally up in the air
-		id: '3759'
-		state: 'child',
-		neighbors: {
-			top: '0909',
-			left: '860n',
-			bottom: '4h56',
-			right: '5h58'
-		}
-	}]
+	config: {
+		interval: 1000,
+		tileSize: 30
+	},
+	gameBoard: {
+		rows: 26,
+		columns: 48,
+		tiles: [
+			{
+				id: '3759',
+				state: 'child',
+				row: 2,
+				column: 30
+			}
+		]
+	}
 }
 */
+
+/*
+ * Helper Fns
+ */
+
+const getViewport = () => {
+	const height = Math.max(document.documentElement.clientHeight, window.innerHeight || 0)
+	const width = Math.max(document.documentElement.clientWidth, window.innerWidth || 0)
+	return {height, width}
+}
+
+// generateNewTile
+const generateNewTile = (row, column) => ({
+	id: uuidV4(),
+	state: (Math.random() > 0.5) ? 'child' : 'dead',
+	row,
+	column
+})
 
 /*
  * Redux Action Creators
@@ -38,6 +62,17 @@ const pauseGame = () => ({
 
 const clearGame = () => ({
 	type: 'CLEAR'
+})
+
+const setDimensions = (rows, columns) => ({
+	type: 'SET_DIMENSIONS',
+	rows,
+	columns
+})
+
+const setTiles = (tiles) => ({
+	type: 'SET_DIMENSIONS',
+	tiles
 })
 
 const nextGeneration = () => ({
@@ -82,19 +117,38 @@ const generation = (state = 0, action) => {
 	}
 }
 
-const interval = (state = 500, action) => {
+const config = (state = {interval: 500, tileSize: 30}, action) => {
 	switch (action.type) {
+		case 'SET_INTERVAL':
+			return Object.assign({}, state, {
+				interval: action.interval
+  		})
+  	case 'SET_TILE_SIZE':
+			return Object.assign({}, state, {
+				tileSize: action.tileSize
+  		})
 		default:
 			return state
 	}
 }
 
-const gameBoard = (state = [], action) => {
+const initialGameBoard = {rows: 0, columns: 0, tiles: []}
+const gameBoard = (state = initialGameBoard, action) => {
 	switch (action.type) {
-		case 'NEW_GAME_BOARD':
-			return action.gameBoard
+		case 'SET_DIMENSIONS':
+			console.log('poke again')
+			return Object.assign({}, state, {
+				rows: action.rows,
+				columns: action.columns
+  		})
+  	case 'SET_TILES':
+			return Object.assign({}, state, {
+				tiles: action.tiles
+  		})
 		case 'CLEAR':
-			return []
+			return Object.assign({}, state, {
+				tiles: []
+  		})
 		default:
 			return state
 	}
@@ -103,7 +157,7 @@ const gameBoard = (state = [], action) => {
 const gameOfLifeApp = combineReducers({
 	play,
 	generation,
-	interval,
+	config,
 	gameBoard
 })
 
@@ -111,24 +165,57 @@ const gameOfLifeApp = combineReducers({
  * Redux Store
  */
 
-let store = createStore(gameOfLifeApp)
+let store = createStore(gameOfLifeApp, applyMiddleware(thunk))
 
 /*
- * Additional Game Logic
+ * Redux state to console log
  */
+
+// log initial state
+console.log('initial state')
+console.log(store.getState())
+// log on change
+store.subscribe(() =>
+  console.log(store.getState())
+)
+
+
+
+const setGameBoardDimensions = () => {
+	return (dispatch, getState) => {
+		const state = getState()
+		const tileSize = state.gameBoard.tileSize
+		const dimensions = getViewport()
+		const rows = dimensions.height/tileSize
+		const columns = dimensions.width/tileSize
+		return dispatch(setDimensions(rows, columns))
+	}
+}
+
+const setGameBoardTiles = () => {
+	return (dispatch, getState) => {
+		console.log('poke')
+		const state = getState()
+		const rows = state.gameBoard.rows
+		const columns = state.gameBoard.columns
+
+		let tiles = [];
+		for (let row = 0; row < rows; row++) {
+			for (let column = 0; column < columns; column++) {
+				let tile = generateNewTile(row, column)
+				gameBoard.push(tile)
+			}
+		}
+
+		return dispatch(setTiles(tiles))
+	}
+}
 
 // Generate game board
 const generateGameBoard = () => {
-	let gameBoard = [];
-	for (let n = 0; n < 54; n++) {
-		let tile = {
-			id: uuidV4(),
-			state: (Math.random() > 0.5) ? 'child' : 'dead'
-		}
-		gameBoard.push(tile)
-	}
-	//console.log(gameBoard)
-	store.dispatch(newGameBoard(gameBoard))
+
+	setGameBoardDimensions()
+	setGameBoardTiles()
 }
 generateGameBoard();
 
