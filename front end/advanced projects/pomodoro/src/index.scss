@@ -6,7 +6,6 @@ body {
 }
 h1 {
 	text-align: center;
-	margin-top: 40vh;
 	font-size: 60px;
 }
 h3 {
@@ -29,4 +28,11 @@ h3 {
 	height: 15px;
   background-color: lightsteelblue;
   border-radius: 0;
+}
+
+#timer-container {
+	display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 90vh;
 }

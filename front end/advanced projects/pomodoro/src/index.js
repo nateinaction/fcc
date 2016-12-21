@@ -249,8 +249,10 @@ const Timer = (props) => {
 	return (
 		<div>
 			<ProgressBar now={100 - (props.timeRemaining * 100 / timeInitial)} />
-			<h1>{minutesRemaining}:{secondsRemaining}</h1>
-			<h3>{message}</h3>
+			<div id='timer-container'>
+				<h1>{minutesRemaining}:{secondsRemaining}</h1>
+				<h3>{message}</h3>
+			</div>
 		</div>
 	)
 }

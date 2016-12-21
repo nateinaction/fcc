@@ -2,19 +2,9 @@ body {
   margin: 0;
   padding: 0;
   font-family: sans-serif;
-  background-color: lightsteelblue;
 }
 h1 {
 	text-align: center;
-	margin-top: 40vh;
-	font-size: 60px;
-}
-h3 {
-	text-align: center;
-}
-
-.panel-title {
-	font-size: 18px;
 }
 
 .btn {
@@ -25,8 +15,7 @@ h3 {
   outline: none;
 }
 
-.progress {
-	height: 15px;
-  background-color: lightsteelblue;
-  border-radius: 0;
+.tile, .tile-blank, .tile-x, .tile-o {
+	height: 60px;
+	width: 60px;
 }

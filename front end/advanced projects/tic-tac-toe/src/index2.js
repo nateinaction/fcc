@@ -3,7 +3,7 @@ import thunk from 'redux-thunk';
 import React, { PropTypes } from 'react';
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-import { PageHeader, Col, Button, Well } from 'react-bootstrap';
+import { PageHeader, Navbar, Nav, NavItem, Glyphicon, ProgressBar, Modal, FormGroup, ControlLabel, FormControl, Button, InputGroup } from 'react-bootstrap';
 import './index.scss';
 
 /*
@@ -11,362 +11,300 @@ import './index.scss';
  */
 /*
 {
-	play: true,
-	visibleTimer: 'pomodoro', // or 'shortBreak' or 'longBreak'
-	timeRemaining: 24,
-	pomodoro: {
-		timeSet: 42 // (in minutes)
-	},
-	shortBreak: {
-		timeSet: 13
-	},
-	longBreak: {
-		timeSet: 13
-	}
+	player: null || 'x' || 'o',
+	turn: 'x' || 'o',
+	gameBoard: [null, null, 'x',
+							null, 'o', 'x',
+							null, null, 'o']
 }
 */
+
+const gameBoardInitialState = () => {
+	let blankBoard = [];
+	for (var n = 1; n <= 9; n++) {
+		blankBoard.push(null)
+	}
+	return blankBoard
+}
 
 /*
  * Redux Action Creators
  */
 
-const allClear = () => ({
-	type: 'ALL_CLEAR'
+/*
+const setPlay = (bool) => ({
+	type: 'SET_PLAY',
+	bool
 })
 
-const clearEntry = () => ({
-	type: 'CLEAR_ENTRY'
+const setVisibleTimer = (timer) => ({
+	type: 'SET_VISIBLE_TIMER',
+	timer
 })
 
-const setOperation = (operation) => ({
-	type: 'SET_OPERATION',
-	operation
+const setPomodoroLength = (time) => ({
+	type: 'SET_POMODORO_LENGTH',
+	time
 })
 
-const setEntry = (entry) => ({
-	type: 'SET_ENTRY',
-	entry
+const setBreakLength = (time) => ({
+	type: 'SET_BREAK_LENGTH',
+	time
 })
 
-const appendToEntry = (input) => {
+const decrementTimeRemaining = () => ({
+	type: 'DECREMENT_TIME_REMAINING'
+})
+
+const showModal = (bool) => ({
+	type: 'SHOW_MODAL',
+	bool
+})
+
+const reset = (time) => ({
+	type: 'RESET',
+	time
+})
+
+const resetTimer = () => {
 	return (dispatch, getState) => {
     const state = getState()
-    let entry = state.entry
-    entry += input.toString()
-		entry = parseInt(entry, 10)
-		return dispatch(setEntry(entry))
+    let visibleTimer = state.timer.visibleTimer
+    let pomodoroLength = state.initialLength.pomodoro
+    let breakLength = state.initialLength.break
+
+    if (visibleTimer === 'pomodoro') {
+    	return dispatch(reset(pomodoroLength))
+    } else {
+    	return dispatch(reset(breakLength))
+    }
 	}
 }
+*/
 
-const setTotal = (total, operation) => {
-	operation = operation ? operation : null;
-	return ({
-		type: 'SET_TOTAL',
-		total,
-		operation
-	})
-}
-
-const addToTotal = (entry, operation) => ({
-	type: 'ADD_TO_TOTAL',
-	entry,
-	operation
+const setPlayer = (piece) => ({
+	type: 'SET_PLAYER',
+	piece
 })
 
-const subtractFromTotal = (entry, operation) => ({
-	type: 'SUBTRACT_FROM_TOTAL',
-	entry,
-	operation
+const setAsX = (index) => ({
+	type: 'SET_AS_X',
+	index
 })
 
-const multiplyWithTotal = (entry, operation) => ({
-	type: 'MULTIPLY_WITH_TOTAL',
-	entry,
-	operation
+const setAsO = (index) => ({
+	type: 'SET_AS_O',
+	index
 })
 
-const divideFromTotal = (entry, operation) => ({
-	type: 'DIVIDE_FROM_TOTAL',
-	entry,
-	operation
-})
-
-const performOperation = (operation) => {
+const tileClick = (index) => {
 	return (dispatch, getState) => {
     const state = getState()
-    const entry = state.entry
-    const total = state.total
-    const previousOperation = state.operation
+    let turn = state.turn
+    let player = state.player
 
-    if (entry === 0) {
-			return dispatch(setOperation(operation))
-		}
-		if (total === 0) {
-			return dispatch(setTotal(entry, operation))
-		}
-		switch (previousOperation) {
-			case 'add': return dispatch(addToTotal(entry, operation))
-			case 'subtract': return dispatch(subtractFromTotal(entry, operation))
-			case 'multiply': return dispatch(multiplyWithTotal(entry, operation))
-			case 'divide': return dispatch(divideFromTotal(entry, operation))
-			default: return state;
-		}
+    if (turn === player && player === 'x') {
+    	return dispatch(setAsX(index))
+    } else if (turn === player && player === 'o') {
+    	return dispatch(setAsO(index))
+    }
 	}
-}
-
-const totalToEntry = (total) => ({
-	type: 'TOTAL_TO_ENTRY',
-	total
-})
-
-const showTotal = () => {
-	return (dispatch, getState) => {
-		dispatch(performOperation(null))
-    const state = getState()
-    dispatch(totalToEntry(state.total))
-  }
 }
 
 /*
  * Redux Reducers
  */
 
-const entry = (state = 0, action) => {
+const player = (state = null, action) => {
 	switch (action.type) {
-		case 'ALL_CLEAR':
-		case 'CLEAR_ENTRY':
-		case 'ADD_TO_TOTAL':
-		case 'SUBTRACT_FROM_TOTAL':
-		case 'MULTIPLY_WITH_TOTAL':
-		case 'DIVIDE_FROM_TOTAL':
-		case 'SET_TOTAL':
-			return 0
-		case 'SET_ENTRY':
-			return action.entry
-		case 'TOTAL_TO_ENTRY':
-			return action.total
-		default:
-			return state
-	}
-}
-
-const operation = (state = null, action) => {
-	switch (action.type) {
-		case 'ALL_CLEAR':
-		case 'CLEAR_ENTRY':
-		case 'TOTAL_TO_ENTRY':
+		case 'SET_PLAYER':
+			return action.piece
+		case 'RESET':
 			return null
-		case 'ADD_TO_TOTAL':
-		case 'SUBTRACT_FROM_TOTAL':
-		case 'MULTIPLY_WITH_TOTAL':
-		case 'DIVIDE_FROM_TOTAL':
-		case 'SET_TOTAL':
-		case 'SET_OPERATION':
-			return action.operation
 		default:
 			return state
 	}
 }
 
-const total = (state = 0, action) => {
+const turn = (state = 'x', action) => {
 	switch (action.type) {
-		case 'ALL_CLEAR':
-		case 'TOTAL_TO_ENTRY':
-			return 0
-		case 'ADD_TO_TOTAL':
-			return state += action.entry
-		case 'SUBTRACT_FROM_TOTAL':
-			return state -= action.entry
-		case 'MULTIPLY_WITH_TOTAL':
-			return state *= action.entry
-		case 'DIVIDE_FROM_TOTAL':
-			return state /= action.entry
-		case 'SET_TOTAL':
-			return action.total
+		case 'SET_X_TURN':
+			return 'x'
+		case 'SET_O_TURN':
+			return 'o'
+		case 'RESET':
+			return null
 		default:
 			return state
 	}
 }
 
-const calculatorApp = combineReducers({
-	entry,
-	operation,
-	total
+const gameBoard = (state = gameBoardInitialState(), action) => {
+	switch (action.type) {
+		case 'SET_AS_X':
+			return state.map((tile, id) => {
+				if (id === action.id) {
+					return 'x'
+				}
+				return tile
+			})
+		case 'SET_AS_O':
+			return state.map((tile, id) => {
+				if (id === action.id) {
+					return 'o'
+				}
+				return tile
+			})
+		case 'RESET':
+			return gameBoardInitialState()
+		default:
+			return state
+	}
+}
+
+const ticTacToeApp = combineReducers({
+	player,
+	turn,
+	gameBoard
 })
 
 /*
  * Redux Store
  */
 
-let store = createStore(calculatorApp, applyMiddleware(thunk))
+let store = createStore(ticTacToeApp, applyMiddleware(thunk))
 
 /*
- * React Presentational Components
+ * Helper Fns
  */
 
-const Header = (props) => (
-	<PageHeader>FCC Calculator <small>with React + Redux</small></PageHeader>
-)
+const ai = () => {
+	store.subscribe(() => {
+		let state = store.getState()
+		let player = state.player
+		let piece = (player === 'x') ? 'o' : 'x'
+		let turn = state.turn
+		let gameBoard = state.gameBoard
+		if (player !== null && piece === turn) {
+      // if player has NOT gone, choose one of the corners OR the center [0, 2, 3, 5, 6, 8, 4]
+      // if player has gone once, place into center [4] if unavailable, place into corner [0, 2, 3, 5, 6, 8]
+      // if player has gone MORE THAN once then look for instances of two in a row
+    }
+	})
+}
+//timerHelper()
 
-const ButtonAC = (props) => (
+/*
+ * Redux state to console log
+ */
+
+console.log('initial state')
+console.log(store.getState())
+store.subscribe(() => console.log(store.getState()))
+
+
+/*
+ * React Components
+ */
+
+const SelectXButton = (props) => (
 	<Button
-		bsStyle='danger'
+		bsStyle='primary'
 		block
-		onClick={() => props.onClick()} >
-		AC
+		onClick={() => props.onSetPlayer('x')} >
+		Play as <Glyphicon glyph='remove' />
 	</Button>
 )
-ButtonAC.propTypes = {
-	onClick: PropTypes.func.isRequired
-}
 
-const ButtonCE = (props) => (
-	<Button
-		bsStyle='warning'
-		block
-		onClick={() => props.onClick()} >
-		CE
-	</Button>
-)
-ButtonCE.propTypes = {
-	onClick: PropTypes.func.isRequired
-}
-
-const ButtonEquals = (props) => (
+const SelectOButton = (props) => (
 	<Button
 		bsStyle='success'
 		block
-		onClick={() => props.onClick()} >
-		=
+		onClick={() => props.onSetPlayer('o')} >
+		Play as <Glyphicon glyph='unchecked' />
 	</Button>
 )
-ButtonEquals.propTypes = {
-	onClick: PropTypes.func.isRequired
+
+const SettingsModal = (props) => {
+	let showModal = (props.player === null)
+	return (
+	  <Modal show={showModal}>
+	    <Modal.Header>
+	      <Modal.Title>Tic-Tac-Toe - New Game</Modal.Title>
+	    </Modal.Header>
+	    <Modal.Body>
+	    	<p>Select your game piece. <Glyphicon glyph='remove' /> plays first.</p>
+	      <SelectXButton onSetPlayer={props.handleSetPlayer} />
+	      <SelectOButton onSetPlayer={props.handleSetPlayer} />
+	    </Modal.Body>
+	  </Modal>
+	)
 }
 
-const ButtonOperation = (props) => (
-	<Button
-		block
-		bsStyle={props.operation === props.operationState ? 'primary' : 'info'}
-		onClick={() => props.onClick(props.operation)} >
-		{props.visualSymbol}
-	</Button>
-)
-ButtonOperation.propTypes = {
-	operation: PropTypes.string.isRequired,
-	operationState: PropTypes.string,
-	onClick: PropTypes.func.isRequired,
-	visualSymbol: PropTypes.string.isRequired
+const tileClass = (tile) => {
+	if (tile === 'x') {
+		return 'tile-x .glyphicon-remove'
+	} else if (tile === 'o') {
+		return 'tile-o .glyphicon-unchecked'
+	}
+	return 'tile-blank'
 }
 
-const ButtonNumber = (props) => (
-	<Button
-		block 
-		onClick={() => props.onClick(props.number)} >
-		{props.number}
-	</Button>
+const GameBoard = (props) => (
+	<div>
+	{props.gameBoard.map((tile, index) => (
+			<div
+				key={index}
+				className={tileClass(tile)}
+				onClick={() => props.handleTileClick(index)} />
+		))}
+	</div>
 )
-ButtonNumber.propTypes = {
-	number: PropTypes.number.isRequired,
-	onClick: PropTypes.func.isRequired
-}
-
-const CalculatorDisplay = (props) => (
-	<Col xs={12} md={6} mdOffset={3}>
-		<Well className='lead text-right'>
-			{props.entry}
-		</Well>
-	</Col>
-)
-CalculatorDisplay.propTypes = {
-	entry: PropTypes.number.isRequired
-}
-
-const CalculatorButtons = (props) => (
-	<Col id='calculator-buttons' xs={12} md={6} mdOffset={3}>
-  	<Col xs={3}>
-  		<ButtonAC onClick={props.handleAllClearClick} />
-  		<ButtonNumber number={7} onClick={props.handleAppendToEntry} />
-  		<ButtonNumber number={4} onClick={props.handleAppendToEntry} />
-  		<ButtonNumber number={1} onClick={props.handleAppendToEntry} />
-  		<ButtonNumber number={0} onClick={props.handleAppendToEntry} />
-  	</Col>
-  	<Col xs={3}>
-  		<ButtonCE onClick={props.handleClearEntryClick} />
-  		<ButtonNumber number={8} onClick={props.handleAppendToEntry} />
-  		<ButtonNumber number={5} onClick={props.handleAppendToEntry} />
-  		<ButtonNumber number={2} onClick={props.handleAppendToEntry} />
-  	</Col>
-  	<Col xs={3}>
-  		<ButtonEquals value={props.value} operator={props.operator} total={props.total} onClick={props.handleShowTotal} />
-  		<ButtonNumber number={9} onClick={props.handleAppendToEntry} />
-  		<ButtonNumber number={6} onClick={props.handleAppendToEntry} />
-  		<ButtonNumber number={3} onClick={props.handleAppendToEntry} />
-  	</Col>
-  	<Col xs={3}>
-  		<ButtonOperation visualSymbol='+' operation='add' operationState={props.operation} onClick={props.handlePerformOperation} />
- 			<ButtonOperation visualSymbol='–' operation='subtract' operationState={props.operation} onClick={props.handlePerformOperation} />
-			<ButtonOperation visualSymbol='x' operation='multiply' operationState={props.operation} onClick={props.handlePerformOperation} />
-			<ButtonOperation visualSymbol='÷' operation='divide' operationState={props.operation} onClick={props.handlePerformOperation} />
-  	</Col>
-  </Col>
-)
-CalculatorButtons.propTypes = {
-	operation: PropTypes.string,
-	handleAllClearClick: PropTypes.func.isRequired,
-	handleClearEntryClick: PropTypes.func.isRequired,
-	handleAppendToEntry: PropTypes.func.isRequired,
-	handlePerformOperation: PropTypes.func.isRequired
-}
 
 /*
  * React-Redux Container Components
  */
 
 const mapStateToProps = (state) => ({
-	operation: state.operation
+	gameBoard: state.gameBoard
 })
 
 const mapDispatchToProps = (dispatch) => ({
-	handleAllClearClick: () => {
-		dispatch(allClear())
-	},
-	handleClearEntryClick: () => {
-		dispatch(clearEntry())
-	},
-	handleAppendToEntry: (input) => {
-		dispatch(appendToEntry(input))
-	},
-	handlePerformOperation: (operation) => {
-		dispatch(performOperation(operation))
-	},
-	handleShowTotal: () => {
-		dispatch(showTotal())
+	handleTileClick: (index) => {
+		dispatch(tileClick(index))
 	}
 })
 
-const CalculatorButtonsContainer = connect(
+const GameBoardContainer = connect(
 	mapStateToProps,
 	mapDispatchToProps
-)(CalculatorButtons)
+)(GameBoard)
 
 const mapStateToPropsTwo = (state) => ({
-	entry: state.entry
+	player: state.player
 })
 
-const CalculatorDisplayContainer = connect(
-	mapStateToPropsTwo
-)(CalculatorDisplay)
+const mapDispatchToPropsTwo = (dispatch) => ({
+	handleSetPlayer: (piece) => {
+		dispatch(setPlayer(piece))
+	}
+})
 
+const SettingsModalContainer = connect(
+	mapStateToPropsTwo,
+	mapDispatchToPropsTwo
+)(SettingsModal)
+
+/*
+ * React Root Component
+ */
 
 const App = (props) => (
-	<div className="App">
-	  <Header />
-	  <Col xs={12} md={8} mdOffset={2}>
-	  	<CalculatorDisplayContainer />
-	  	<CalculatorButtonsContainer />
-	  </Col>
-  </div>
+	<div id='App'>
+		<PageHeader>Tic-Tac-Toe <small> with React & Redux</small></PageHeader>
+		<SettingsModalContainer />
+		<GameBoardContainer />
+	</div>
 )
 
 /*
@@ -379,57 +317,4 @@ render(
   </Provider>,
   document.getElementById('root')
 );
-
-/*
- * Redux state to console log
- */
-/*
-console.log('initial state')
-console.log(store.getState())
-store.subscribe(() => console.log(store.getState()))
-*/
-
-/*
- * Redux behavior tests
- */
-/*
-console.log('entry: 4')
-store.dispatch(appendToEntry(4))
-console.log('entry: 42')
-store.dispatch(appendToEntry(2))
-console.log('set operation: divide')
-store.dispatch(performOperation('divide'))
-console.log('set operation: add')
-store.dispatch(setOperation('add'))
-console.log('entry: 9')
-store.dispatch(appendToEntry(9))
-console.log('set operation: subtract')
-store.dispatch(performOperation('subtract'))
-console.log('entry: 7')
-store.dispatch(appendToEntry(7))
-
-console.log('set operation: divide')
-store.dispatch(performOperation('divide'))
-console.log('entry: 0')
-store.dispatch(appendToEntry(0))
-
-console.log('show total')
-store.dispatch(showTotal())
-console.log('show total')
-store.dispatch(showTotal())
-console.log('allClear')
-store.dispatch(allClear())
-console.log('show total')
-store.dispatch(showTotal())
-
-console.log('entry: 7')
-store.dispatch(appendToEntry(7))
-console.log('set operation: subtract')
-store.dispatch(performOperation('subtract'))
-
-console.log('show total')
-store.dispatch(showTotal())
-console.log('entry: 7')
-store.dispatch(appendToEntry(7))
-*/
 
