@@ -140,60 +140,116 @@ const chooseOutOf = (arr) => {
 }
 
 //const thisGameBoard = [null,null,null,null,null,null,null,null,null] // empty
-const thisGameBoard = [null,null,null,null,'x',null,null,null,null] // center taken
-//const thisGameBoard = ['x','x','o','x','o','o',null,null,null] // two possible wins
+//const thisGameBoard = [null,null,null,null,'x',null,null,null,null] // center taken
 //const thisGameBoard = ['x','x','o','x','o','o','o',null,null] // winning o
-const possibleWins = [
-	// horizontal wins
-	[0,1,2],
-	[3,4,5],
-	[6,7,8],
-	// vertical wins
-	[0,3,6],
-	[1,4,7],
-	[2,5,8],
-	// diaginal wins
-	[0,4,8],
-	[2,4,6]
-]
+const thisGameBoard = ['x','x','o','x','o','o',null,null,null] // two possible wins
 
-const eliminateImpossibleWins = (thisGameBoard, possibleWins) => {
-	return possibleWins.filter((possibleWin) => {
-
-		// create an array of possible win spaces from gameboard
-		let tempArray = possibleWins.map((possibleWin) => {
-			let location = possibleWin[n]
-			return thisGameBoard[location]
-		})
-
-		// if tempArray contains both x's and o's then remove from possibleWins array
-		return !(tempArray.indexOf('x') !== -1 && tempArray.indexOf('o') !== -1)
-		
+// count each item in the array
+const countTokensInArr = (arr) => {
+	let arrObjCount = {}
+	arr.map((token) => {
+		arrObjCount[token] = arrObjCount[token] ? arrObjCount[token] + 1 : 1;
 	})
+	return arrObjCount
 }
 
-const nextMove = (thisGameBoard, possibleWins, myPiece) => {
+// using the current state of the gameboard, create a map of data about solutions
+const solutionMap = (currentGameBoard) => {
+	const solutions = [
+		// horizontal wins
+		[0,1,2],
+		[3,4,5],
+		[6,7,8],
+		// vertical wins
+		[0,3,6],
+		[1,4,7],
+		[2,5,8],
+		// diaginal wins
+		[0,4,8],
+		[2,4,6]
+	]
+	return solutions.map((solution) => {
+		let currentState = solution.map((location) => {
+				return currentGameBoard[location]
+			}).reduce(function(a, b) { 
+	  		return a.concat(b);
+			}, [])
+		let tokenCount = countTokensInArr(currentState)
+		return {
+			solution,
+			currentState,
+			tokenCount
+		}
+	})
+}
+solutionMap(thisGameBoard)
+
+// eliminate solutions that are no longer winnable
+const winnableSolutions = (currentGameBoard) => {
+	let possibleSolutions = solutionMap(currentGameBoard)
+	return possibleSolutions.filter((solutionObj) => {
+		// if tempArray contains both x's and o's then remove from possibleWins array
+		let tokenCount = solutionObj.tokenCount
+		return !(tokenCount.hasOwnProperty('x') && tokenCount.hasOwnProperty('o'))
+	})
+}
+winnableSolutions(thisGameBoard)
+
+// eliminate solutions that are no longer winnable
+const enhancedSolutionMap = (currentGameBoard) => {
+	let possibleSolutions = winnableSolutions(currentGameBoard)
+	return possibleSolutions.map((solutionObj) => {
+		// add primaryToken and score keys
+		let tokenCount = solutionObj.tokenCount
+		let primaryToken = null
+		let score = 0
+
+		if (tokenCount.hasOwnProperty('null') && tokenCount['null'] < 3 || !tokenCount.hasOwnProperty('null')) {
+			primaryToken = tokenCount.hasOwnProperty('x') ? 'x' : 'o'
+			score = tokenCount[primaryToken]
+		}
+		return Object.assign({}, solutionObj, {
+			primaryToken,
+			score
+	  })
+	})
+}
+enhancedSolutionMap(thisGameBoard)
+
+const checkForWins = (possibleSolutions) => {
+	let winningToken = null
+	let win = possibleSolutions.filter((solution) => {
+		winningToken = solution.tokenCount.hasOwnProperty('x') ? 'x' : 'o'
+		return (solution.score === 3)
+	})
+	return (win.length > 0) ? winningToken : false
+}
+
+const chooseNextMove = (currentGameBoard, myToken) => {
+	let possibleSolutions = enhancedSolutionMap(currentGameBoard)
+
+	// find any wins (score of 3)
+	let winningToken = checkForWins(possibleSolutions)
+	if (winningToken) {
+		return winningToken + ' wins!'
+	}
+
+	// find any battles (score of 2) place token on your own skirmish but then on opponents
+
+	// find any skirmishes (score of 1), place token on your own skirmish
+
+	// place token on center, if not available, on corners
+}
+
+///
+
+const nextMove = (currentGameBoard, myPiece) => {
 
 	let winningPiece = null;
 
-	let possibleMoves = possibleWins.filter((possibleWin) => {
-		// create an array of possible win spaces from gameboard
-		let tempArray = [];
-		for (var n = 0; n < 3; n++) {
-			let location = possibleWin[n]
-			let piece = thisGameBoard[location]
-			tempArray.push(piece)
-		}
+	const winnableSolutions = new winnableSolutions(currentGameBoard)
 
-		// if tempArray contains both x's and o's then remove from possibleWins array
-		if (tempArray.indexOf('x') !== -1 && tempArray.indexOf('o') !== -1) {
-			console.log('removing ', possibleWin, ' from array of possible wins')
-			return false
-		}
-		return true
-	})
-
-	possibleMoves = possibleMoves.filter((possibleWin) => {
+	possibleWins = possibleMoves.filter((possibleWin) => {
 		// create an array of possible win spaces from gameboard
 		let tempArray = [];
 		for (var n = 0; n < 3; n++) {
