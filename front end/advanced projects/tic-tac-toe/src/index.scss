@@ -15,7 +15,24 @@ h1 {
   outline: none;
 }
 
+#game-board {
+	margin: 0 auto;
+	text-align: center;
+	width: 180px;
+	line-height: 0;
+}
+
 .tile, .tile-blank, .tile-x, .tile-o {
 	height: 60px;
 	width: 60px;
+	border: 1px solid black;
+	display: inline-block;
+}
+
+.tile-x {
+	background-color: red;
+}
+
+.tile-o {
+	background-color: blue;
 }

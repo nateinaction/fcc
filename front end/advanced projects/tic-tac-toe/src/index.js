@@ -1,10 +1,10 @@
 import { createStore, combineReducers, applyMiddleware } from 'redux'
 import thunk from 'redux-thunk';
-//import React, { PropTypes } from 'react';
-//import { Provider, connect } from 'react-redux'
-//import { render } from 'react-dom';
-//import { PageHeader, Navbar, Nav, NavItem, Glyphicon, ProgressBar, Modal, FormGroup, ControlLabel, FormControl, Button, InputGroup } from 'react-bootstrap';
-//import './index.scss';
+import React, { PropTypes } from 'react';
+import { Provider, connect } from 'react-redux'
+import { render } from 'react-dom';
+import { PageHeader, Navbar, Nav, NavItem, Glyphicon, ProgressBar, Modal, FormGroup, ControlLabel, FormControl, Button, InputGroup } from 'react-bootstrap';
+import './index.scss';
 
 /*
  * Example Object
@@ -13,7 +13,7 @@ import thunk from 'redux-thunk';
 {
 	player: null || 'x' || 'o',
 	turn: 'x' || 'o',
-	turnCount: 0,
+	status: null || 'win' || 'draw',
 	gameBoard: [null, null, 'x',
 							null, 'o', 'x',
 							null, null, 'o']
@@ -32,14 +32,14 @@ const gameBoardInitialState = () => {
  * Redux Action Creators
  */
 
-const setPlayer = (piece) => ({
+const setPlayer = (token) => ({
 	type: 'SET_PLAYER',
-	piece
+	token
 })
 
-const setPiece = (piece, index) => ({
-	type: 'SET_PIECE',
-	piece,
+const setToken = (token, index) => ({
+	type: 'SET_TOKEN',
+	token,
 	index
 })
 
@@ -50,7 +50,7 @@ const tileClick = (index) => {
     let player = state.player
 
     if (turn === player) {
-    	return dispatch(setPiece(player, index))
+    	return dispatch(setToken(player, index))
     }
 	}
 }
@@ -62,7 +62,7 @@ const tileClick = (index) => {
 const player = (state = null, action) => {
 	switch (action.type) {
 		case 'SET_PLAYER':
-			return action.piece
+			return action.token
 		case 'RESET':
 			return null
 		default:
@@ -72,7 +72,7 @@ const player = (state = null, action) => {
 
 const turn = (state = 'x', action) => {
 	switch (action.type) {
-		case 'SET_PIECE':
+		case 'SET_TOKEN':
 			return (state === 'x') ? 'o' : 'x'
 		case 'RESET':
 			return 'x'
@@ -81,23 +81,12 @@ const turn = (state = 'x', action) => {
 	}
 }
 
-const turnCount = (state = 0, action) => {
-	switch (action.type) {
-		case 'SET_PIECE':
-			return state + 1
-		case 'RESET':
-			return 0
-		default:
-			return state
-	}
-}
-
 const gameBoard = (state = gameBoardInitialState(), action) => {
 	switch (action.type) {
-		case 'SET_PIECE':
+		case 'SET_TOKEN':
 			return state.map((tile, index) => {
 				if (index === action.index) {
-					return action.piece
+					return action.token
 				}
 				return tile
 			})
@@ -111,7 +100,6 @@ const gameBoard = (state = gameBoardInitialState(), action) => {
 const ticTacToeApp = combineReducers({
 	player,
 	turn,
-	turnCount,
 	gameBoard
 })
 
@@ -125,12 +113,18 @@ let store = createStore(ticTacToeApp, applyMiddleware(thunk))
  * Helper Fns
  */
 
-const isEmpty = (thisGameBoard, index) => {
-	return (thisGameBoard[index] === null)
+//var thisGameBoard = [null,null,null,null,null,null,null,null,null] // empty
+//var thisGameBoard = [null,null,null,null,'x',null,null,null,null] // center taken
+//var thisGameBoard = ['o','x',null,'x','o',null,null,null,null] // win on next 'o' or block on next 'x'
+//var thisGameBoard = ['x','x','o','x','o','o','o',null,null] // winning o
+//var thisGameBoard = ['x','x','o','x','o','o',null,null,null] // two possible wins
+
+const isEmpty = (currentGameBoard, index) => {
+	return (currentGameBoard[index] === null)
 }
 
-const whichEmpty = (thisGameBoard, arr) => {
-	return arr.filter((index) => isEmpty(thisGameBoard, index))
+const whichEmpty = (currentGameBoard, arr) => {
+	return arr.filter((index) => isEmpty(currentGameBoard, index))
 }
 
 const chooseOutOf = (arr) => {
@@ -139,16 +133,11 @@ const chooseOutOf = (arr) => {
 	return arr[random]
 }
 
-//const thisGameBoard = [null,null,null,null,null,null,null,null,null] // empty
-//const thisGameBoard = [null,null,null,null,'x',null,null,null,null] // center taken
-//const thisGameBoard = ['x','x','o','x','o','o','o',null,null] // winning o
-const thisGameBoard = ['x','x','o','x','o','o',null,null,null] // two possible wins
-
 // count each item in the array
 const countTokensInArr = (arr) => {
 	let arrObjCount = {}
 	arr.map((token) => {
-		arrObjCount[token] = arrObjCount[token] ? arrObjCount[token] + 1 : 1;
+		return arrObjCount[token] = arrObjCount[token] ? arrObjCount[token] + 1 : 1;
 	})
 	return arrObjCount
 }
@@ -182,7 +171,7 @@ const solutionMap = (currentGameBoard) => {
 		}
 	})
 }
-solutionMap(thisGameBoard)
+//console.log(solutionMap(thisGameBoard))
 
 // eliminate solutions that are no longer winnable
 const winnableSolutions = (currentGameBoard) => {
@@ -193,7 +182,11 @@ const winnableSolutions = (currentGameBoard) => {
 		return !(tokenCount.hasOwnProperty('x') && tokenCount.hasOwnProperty('o'))
 	})
 }
-winnableSolutions(thisGameBoard)
+//winnableSolutions(thisGameBoard)
+
+const findPrimaryToken = (tokenCount) => {
+	return tokenCount.hasOwnProperty('x') ? 'x' : 'o'
+}
 
 // eliminate solutions that are no longer winnable
 const enhancedSolutionMap = (currentGameBoard) => {
@@ -204,8 +197,8 @@ const enhancedSolutionMap = (currentGameBoard) => {
 		let primaryToken = null
 		let score = 0
 
-		if (tokenCount.hasOwnProperty('null') && tokenCount['null'] < 3 || !tokenCount.hasOwnProperty('null')) {
-			primaryToken = tokenCount.hasOwnProperty('x') ? 'x' : 'o'
+		if (tokenCount['null'] !== 3) {
+			primaryToken = findPrimaryToken(tokenCount)
 			score = tokenCount[primaryToken]
 		}
 		return Object.assign({}, solutionObj, {
@@ -214,15 +207,34 @@ const enhancedSolutionMap = (currentGameBoard) => {
 	  })
 	})
 }
-enhancedSolutionMap(thisGameBoard)
+//enhancedSolutionMap(thisGameBoard)
+
+const checkForScore = (score, possibleSolutions) => {
+	return possibleSolutions.filter((solution) => {
+		return (solution.score === score)
+	})
+}
 
 const checkForWins = (possibleSolutions) => {
-	let winningToken = null
-	let win = possibleSolutions.filter((solution) => {
-		winningToken = solution.tokenCount.hasOwnProperty('x') ? 'x' : 'o'
-		return (solution.score === 3)
+	let win = checkForScore(3, possibleSolutions)
+	return (win.length > 0) ? findPrimaryToken(win[0].tokenCount) : false
+}
+
+const findNullSpot = (solutionObj) => {
+	let location = solutionObj.currentState.indexOf(null)
+	return solutionObj.solution[location]
+}
+
+const findTokenPossibleWins = (possibleSolutions, token) => {
+	return checkForScore(2, possibleSolutions).filter((solutionsArr) => {
+		return (solutionsArr.primaryToken === token)
 	})
-	return (win.length > 0) ? winningToken : false
+}
+
+const findTokenPossibleMoves = (possibleSolutions, token) => {
+	return checkForScore(1, possibleSolutions).filter((solutionsArr) => {
+		return (solutionsArr.primaryToken === token)
+	})
 }
 
 const chooseNextMove = (currentGameBoard, myToken) => {
@@ -235,139 +247,187 @@ const chooseNextMove = (currentGameBoard, myToken) => {
 	}
 
 	// find any battles (score of 2) place token on your own skirmish but then on opponents
+	let opponentToken = (myToken === 'x') ? 'o' : 'x'
+	let myPossibleWins = findTokenPossibleWins(possibleSolutions, myToken)
+	let opponentPossibleWins = findTokenPossibleWins(possibleSolutions, opponentToken)
+	if (myPossibleWins.length > 0) {
+		return findNullSpot(myPossibleWins[0])
+	} else if (opponentPossibleWins.length > 0) {
+		return findNullSpot(opponentPossibleWins[0])
+	}
 
 	// find any skirmishes (score of 1), place token on your own skirmish
+	let myPossibleMoves = findTokenPossibleMoves(possibleSolutions, myToken)
+	if (myPossibleMoves.length > 0) {
+		return findNullSpot(myPossibleMoves[0]) // For more variety I could build an array of null spots and hand them to chooseOutOf
+	}
 
 	// place token on center, if not available, on corners
-}
-
-///
-
-const nextMove = (currentGameBoard, myPiece) => {
-
-	let winningPiece = null;
-
-	const winnableSolutions = new winnableSolutions(currentGameBoard)
-
-	possibleWins = possibleMoves.filter((possibleWin) => {
-		// create an array of possible win spaces from gameboard
-		let tempArray = [];
-		for (var n = 0; n < 3; n++) {
-			let location = possibleWin[n]
-			let piece = thisGameBoard[location]
-			tempArray.push(piece)
-		}
-
-		// count instances of each piece in array
-		let tempObj = {}
-		for (var n = 0; n < 3; n++) {
-			var piece = tempArray[n];
-    	tempObj[piece] = tempObj[piece] ? tempObj[piece] + 1 : 1;
-		}
-
-		// find any wins ...
-		if (tempObj['x'] === 3) {
-			console.log(possibleWin, ' has 3 identical pieces')
-			winningPiece = 'x'
-			return false
-		}
-		if (tempObj['o'] === 3) {
-			console.log(possibleWin, ' has 3 identical pieces')
-			winningPiece = 'o'
-			return false
-		}
-
-		//if the temp array contains two of the same pieces return the array
-		if (tempObj['x'] === 2 || tempObj['o'] === 2) {
-			console.log(possibleWin, ' has 2 identical pieces')
-			return true
-		}
-		return false
-	})
-
-	// if there is a win, report it.
-	if (winningPiece !== null) {
-		console.log(winningPiece, ' won!')
+	if (isEmpty(currentGameBoard, 4)) {
+		return 4
 	}
 
-	let numOfPossibleMoves = possibleMoves.length
-	// if there is are multiple arrays with 2 identical pieces, pick the AI's
-	if (numOfPossibleMoves > 1) {
-		console.log('possible moves is greater than 1')
-		for (var n = 0; n < numOfPossibleMoves; n++) {
-			console.log(possibleMoves[n], myPiece, possibleMoves[n].indexOf(myPiece))
-			if (possibleMoves[n].indexOf(myPiece) !== -1) {
-				let thisMove = whichEmpty(thisGameBoard, possibleMoves[n])
-				console.log('I choose ', thisMove)
-				return thisMove
-			}
-		}
-	}
-	// if an array with two identical pieces return the move index
-	if (numOfPossibleMoves === 1) {
-		console.log('possible moves is 1')
-		let thisMove = whichEmpty(thisGameBoard, possibleMoves)
-		console.log('I choose ', thisMove)
+	let possibleMoves = whichEmpty(currentGameBoard, [0, 2, 6, 8])
+	if (possibleMoves.length > 0) {
+		let thisMove = chooseOutOf(possibleMoves)
 		return thisMove
 	}
-	// if there are not two identical pieces i.e. if 'move' is an empty array then pick one of 4 corners or center with center being priority
-	if (numOfPossibleMoves === 0) {
-		if (isEmpty(thisGameBoard, 4)) {
-			console.log('I choose ', 4)
-  		return 4
-  	} else {
-  		let possibleMoves = whichEmpty(thisGameBoard, [0, 2, 6, 8])
-  		let thisMove = chooseOutOf(possibleMoves)
-  		console.log('I choose ', thisMove)
-  		return thisMove
-  	}
-	}
-}
 
-nextMove(thisGameBoard, possibleWins, 'x')
+	console.log('DRAW')
+	return 'DRAW'
+}
+//chooseNextMove(thisGameBoard, 'x')
 
 const ai = () => {
 	store.subscribe(() => {
 		let state = store.getState()
 		let player = state.player
-		let piece = (player === 'x') ? 'o' : 'x'
+		let myToken = (player === 'x') ? 'o' : 'x'
 		let turn = state.turn
-		let turnCount = state.turnCount
+		//let turnCount = state.turnCount
 		let thisGameBoard = state.gameBoard
-		if (player !== null && piece === turn) {
-			console.log('ai plays')
-			//setTimeout(console.log('ai plays'), 1000);
-      // if player has NOT gone, choose one of the corners OR the center [0, 2, 3, 5, 6, 8, 4]
-      if (turnCount === 0) {
-      	let aiPlay = chooseOutOf([0, 2, 3, 4, 5, 6, 8])
-      	store.dispatch(setPiece(piece, aiPlay))
-      }
-      // if player has gone once, place into center [4] if unavailable, place into corner [0, 2, 3, 5, 6, 8]
-      if (turnCount === 1) {
-      	if (isEmpty(thisGameBoard, 4)) {
-      		store.dispatch(setPiece(piece, 4))
-      	} else {
-      		let aiPlay = chooseOutOf([0, 2, 3, 5, 6, 8])
-      		store.dispatch(setPiece(piece, aiPlay))
-      	}
-      }
-      // if player has gone MORE THAN once then look for instances of two in a row
-      if (turnCount > 1) {
 
-      }
+		//on every turn check for win
+
+		//on every turn check for draw
+
+		//on computer turn, choose move
+		if (player !== null && myToken === turn) {
+			console.log('ai plays')
+			//setTimeout(console.log('ai plays'), 3000);
+			let aiPlay = chooseNextMove(thisGameBoard, myToken)
+      store.dispatch(setToken(myToken, aiPlay))
     }
 	})
 }
 ai()
 
 /*
+ * React Components
+ */
+
+const SelectXButton = (props) => (
+	<Button
+		bsStyle='primary'
+		block
+		onClick={() => props.onSetPlayer('x')} >
+		Play as <Glyphicon glyph='remove' />
+	</Button>
+)
+
+const SelectOButton = (props) => (
+	<Button
+		bsStyle='success'
+		block
+		onClick={() => props.onSetPlayer('o')} >
+		Play as <Glyphicon glyph='unchecked' />
+	</Button>
+)
+
+const SettingsModal = (props) => {
+	let showModal = (props.player === null)
+	return (
+	  <Modal show={showModal}>
+	    <Modal.Header>
+	      <Modal.Title>Tic-Tac-Toe - New Game</Modal.Title>
+	    </Modal.Header>
+	    <Modal.Body>
+	    	<p>Select your game token. <Glyphicon glyph='remove' /> plays first.</p>
+	      <SelectXButton onSetPlayer={props.handleSetPlayer} />
+	      <SelectOButton onSetPlayer={props.handleSetPlayer} />
+	    </Modal.Body>
+	  </Modal>
+	)
+}
+
+const tileClass = (tile) => {
+	if (tile === 'x') {
+		return 'tile-x .glyphicon .glyphicon-remove'
+	} else if (tile === 'o') {
+		return 'tile-o .glyphicon .glyphicon-unchecked'
+	}
+	return 'tile-blank'
+}
+
+const GameBoard = (props) => (
+	<div id='game-board'>
+	{props.gameBoard.map((tile, index) => {
+
+		return (
+			<div
+				key={index}
+				className={tileClass(tile)}
+				onClick={() => props.handleTileClick(index)} />
+		)
+	})}
+	</div>
+)
+
+/*
+ * React-Redux Container Components
+ */
+
+const mapStateToProps = (state) => ({
+	gameBoard: state.gameBoard
+})
+
+const mapDispatchToProps = (dispatch) => ({
+	handleTileClick: (index) => {
+		dispatch(tileClick(index))
+	}
+})
+
+const GameBoardContainer = connect(
+	mapStateToProps,
+	mapDispatchToProps
+)(GameBoard)
+
+const mapStateToPropsTwo = (state) => ({
+	player: state.player
+})
+
+const mapDispatchToPropsTwo = (dispatch) => ({
+	handleSetPlayer: (token) => {
+		dispatch(setPlayer(token))
+	}
+})
+
+const SettingsModalContainer = connect(
+	mapStateToPropsTwo,
+	mapDispatchToPropsTwo
+)(SettingsModal)
+
+/*
+ * React Root Component
+ */
+
+const App = (props) => (
+	<div id='App'>
+		<PageHeader>Tic-Tac-Toe <small> with React & Redux</small></PageHeader>
+		<SettingsModalContainer />
+		<GameBoardContainer />
+	</div>
+)
+
+/*
+ * React Dom
+ */
+
+render(
+  <Provider store={store}>
+    <App />
+  </Provider>,
+  document.getElementById('root')
+);
+
+/*
  * Redux state to console log
  */
-/*
+
 console.log('initial state')
 console.log(store.getState())
 store.subscribe(() => console.log(store.getState()))
-*/
+
 /*
 store.dispatch(setPlayer('x'))
 store.dispatch(tileClick(0))

@@ -294,6 +294,10 @@ const Header = (props) => (
   <PageHeader>React Recipe Book <small>with Redux & Local Storage</small></PageHeader>
 )
 
+/*
+ * React Redux Container
+ */
+
 const mapStateToProps = (state) => ({
 	recipes: state.recipes
 })
