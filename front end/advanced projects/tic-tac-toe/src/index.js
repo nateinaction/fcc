@@ -3,7 +3,7 @@ import thunk from 'redux-thunk';
 import React, { PropTypes } from 'react';
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-import { PageHeader, Navbar, Nav, NavItem, Glyphicon, ProgressBar, Modal, FormGroup, ControlLabel, FormControl, Button, InputGroup } from 'react-bootstrap';
+import { PageHeader, Navbar, Nav, NavItem, Glyphicon, ProgressBar, Modal, FormGroup, ControlLabel, FormControl, Button, InputGroup, Col } from 'react-bootstrap';
 import './index.scss';
 
 /*
@@ -48,12 +48,30 @@ const tileClick = (index) => {
     const state = getState()
     let turn = state.turn
     let player = state.player
+    let status = state.status
 
-    if (turn === player) {
+    if (turn === player && status === null) {
     	return dispatch(setToken(player, index))
     }
 	}
 }
+
+const setStatus = (status) => {
+	let message = 'It looks like this game is a draw.'
+	if (status !== 'draw') {
+		message = 'It looks like ' + status + ' won this game.'
+	}
+	console.log(status)
+
+	return {
+		type: 'SET_STATUS',
+		message
+	}
+}
+
+const reset = () => ({
+	type: 'RESET'
+})
 
 /*
  * Redux Reducers
@@ -81,6 +99,17 @@ const turn = (state = 'x', action) => {
 	}
 }
 
+const status = (state = null, action) => {
+	switch (action.type) {
+		case 'SET_STATUS':
+			return action.message
+		case 'RESET':
+			return null
+		default:
+			return state
+	}
+}
+
 const gameBoard = (state = gameBoardInitialState(), action) => {
 	switch (action.type) {
 		case 'SET_TOKEN':
@@ -100,6 +129,7 @@ const gameBoard = (state = gameBoardInitialState(), action) => {
 const ticTacToeApp = combineReducers({
 	player,
 	turn,
+	status,
 	gameBoard
 })
 
@@ -237,14 +267,7 @@ const findTokenPossibleMoves = (possibleSolutions, token) => {
 	})
 }
 
-const chooseNextMove = (currentGameBoard, myToken) => {
-	let possibleSolutions = enhancedSolutionMap(currentGameBoard)
-
-	// find any wins (score of 3)
-	let winningToken = checkForWins(possibleSolutions)
-	if (winningToken) {
-		return winningToken + ' wins!'
-	}
+const chooseNextMove = (currentGameBoard, possibleSolutions, myToken) => {
 
 	// find any battles (score of 2) place token on your own skirmish but then on opponents
 	let opponentToken = (myToken === 'x') ? 'o' : 'x'
@@ -273,34 +296,55 @@ const chooseNextMove = (currentGameBoard, myToken) => {
 		return thisMove
 	}
 
-	console.log('DRAW')
-	return 'DRAW'
+	console.log('this shouldn\'t happen...')
 }
 //chooseNextMove(thisGameBoard, 'x')
 
-const ai = () => {
-	store.subscribe(() => {
-		let state = store.getState()
-		let player = state.player
-		let myToken = (player === 'x') ? 'o' : 'x'
-		let turn = state.turn
-		//let turnCount = state.turnCount
-		let thisGameBoard = state.gameBoard
+store.subscribe(() => {
+	let state = store.getState()
+	if (state.status === null) {
+		ai(state)
+	}
+})
 
-		//on every turn check for win
+const ai = (state) => {
+	let player = state.player
+	let myToken = (player === 'x') ? 'o' : 'x'
+	let turn = state.turn
+	//let turnCount = state.turnCount
+	let currentGameBoard = state.gameBoard
 
-		//on every turn check for draw
+	//on every turn check for draw
+	let possibleSolutions = enhancedSolutionMap(currentGameBoard)
+	console.log(possibleSolutions)
+	if (possibleSolutions.length === 0) {
+		// this is a draw
+		console.log('draw')
+		return store.dispatch(setStatus('draw'))
+	}
+	// also if possibleSolutions length is 1 with a score of 1 this is also a draw
+	if (possibleSolutions.length === 1 && possibleSolutions[0].score === 1) {
+		// this is a draw
+		console.log('draw')
+		return store.dispatch(setStatus('draw'))
+	}
 
-		//on computer turn, choose move
-		if (player !== null && myToken === turn) {
-			console.log('ai plays')
-			//setTimeout(console.log('ai plays'), 3000);
-			let aiPlay = chooseNextMove(thisGameBoard, myToken)
-      store.dispatch(setToken(myToken, aiPlay))
-    }
-	})
+	//on every turn check for win
+	let winningToken = checkForWins(possibleSolutions)
+	if (winningToken) {
+		// this is a win
+		console.log(winningToken, ' wins!')
+		return store.dispatch(setStatus(winningToken))
+	}
+
+	//on computer turn, choose move
+	if (player !== null && myToken === turn) {
+		console.log('ai plays')
+		//setTimeout(chooseNextMove(currentGameBoard, possibleSolutions, myToken), 3000);
+		let aiPlay = chooseNextMove(currentGameBoard, possibleSolutions, myToken)
+    store.dispatch(setToken(myToken, aiPlay))
+  }
 }
-ai()
 
 /*
  * React Components
@@ -340,28 +384,47 @@ const SettingsModal = (props) => {
 	)
 }
 
-const tileClass = (tile) => {
-	if (tile === 'x') {
-		return 'tile-x .glyphicon .glyphicon-remove'
-	} else if (tile === 'o') {
-		return 'tile-o .glyphicon .glyphicon-unchecked'
-	}
-	return 'tile-blank'
+const GameBoard = (props) => {
+	return (
+		<div id='game-board'>
+		{props.gameBoard.map((tile, index) => {
+			let tileIcon = <span />
+			if (tile === 'x') {
+				tileIcon = <Glyphicon glyph='remove' />
+			} else if (tile === 'o') {
+				tileIcon = <Glyphicon glyph='unchecked' />
+			}
+			return (
+				<div
+					key={index}
+					className='tile'
+					onClick={() => props.handleTileClick(index)} >
+					{tileIcon}
+				</div>
+			)
+		})}
+		</div>
+	)
 }
 
-const GameBoard = (props) => (
-	<div id='game-board'>
-	{props.gameBoard.map((tile, index) => {
-
+const Message = (props) => {
+	if (props.message !== null) {
 		return (
-			<div
-				key={index}
-				className={tileClass(tile)}
-				onClick={() => props.handleTileClick(index)} />
+			<div>
+				<Col md={2} mdOffset={5}>
+					<h3>{props.message}</h3>
+					<Button
+						bsStyle='primary'
+						block
+						onClick={() => props.handleResetClick()} >
+						Try again?
+					</Button>
+				</Col>
+			</div>
 		)
-	})}
-	</div>
-)
+	}
+	return null
+}
 
 /*
  * React-Redux Container Components
@@ -397,6 +460,21 @@ const SettingsModalContainer = connect(
 	mapDispatchToPropsTwo
 )(SettingsModal)
 
+const mapStateToPropsThree = (state) => ({
+	message: state.status
+})
+
+const mapDispatchToPropsThree = (dispatch) => ({
+	handleResetClick: (token) => {
+		dispatch(reset())
+	}
+})
+
+const MessageContainer = connect(
+	mapStateToPropsThree,
+	mapDispatchToPropsThree
+)(Message)
+
 /*
  * React Root Component
  */
@@ -406,6 +484,7 @@ const App = (props) => (
 		<PageHeader>Tic-Tac-Toe <small> with React & Redux</small></PageHeader>
 		<SettingsModalContainer />
 		<GameBoardContainer />
+		<MessageContainer />
 	</div>
 )
 
