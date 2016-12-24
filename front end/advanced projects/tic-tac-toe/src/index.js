@@ -141,6 +141,14 @@ const ticTacToeApp = combineReducers({
 let store = createStore(ticTacToeApp, applyMiddleware(thunk))
 
 /*
+ * Redux state to console log
+ */
+
+console.log('initial state')
+console.log(store.getState())
+store.subscribe(() => console.log(store.getState()))
+
+/*
  * Helper Fns
  */
 
@@ -154,7 +162,7 @@ const whichEmpty = (currentGameBoard, arr) => {
 
 const chooseOutOf = (arr) => {
 	let multiplier = arr.length
-	let random = Math.floor(Math.random() * (multiplier + 1))
+	let random = Math.floor(Math.random() * multiplier)
 	return arr[random]
 }
 
@@ -196,7 +204,6 @@ const solutionMap = (currentGameBoard) => {
 		}
 	})
 }
-//console.log(solutionMap(thisGameBoard))
 
 // eliminate solutions that are no longer winnable
 const winnableSolutions = (currentGameBoard) => {
@@ -207,7 +214,6 @@ const winnableSolutions = (currentGameBoard) => {
 		return !(tokenCount.hasOwnProperty('x') && tokenCount.hasOwnProperty('o'))
 	})
 }
-//winnableSolutions(thisGameBoard)
 
 const findPrimaryToken = (tokenCount) => {
 	return tokenCount.hasOwnProperty('x') ? 'x' : 'o'
@@ -245,6 +251,17 @@ const checkForWins = (possibleSolutions) => {
 	return (win.length > 0) ? findPrimaryToken(win[0].tokenCount) : false
 }
 
+const checkForDraws = (possibleSolutions) => {
+	let possibleSolutionsLength = possibleSolutions.length
+	if (possibleSolutionsLength === 0) {
+		return true
+	}
+	if (possibleSolutionsLength === 1 && possibleSolutions[0].score === 1) {
+		return true
+	}
+	return false
+}
+
 const findNullSpot = (solutionObj) => {
 	let location = solutionObj.currentState.indexOf(null)
 	return solutionObj.solution[location]
@@ -262,11 +279,24 @@ const findTokenPossibleMoves = (possibleSolutions, token) => {
 	})
 }
 
-const chooseNextMove = (currentGameBoard, possibleSolutions, myToken) => {
+const preferCornerForScoreOne = (possibleMoves) => {
+	let preferredSpots = [0, 2, 6, 8]
+	return possibleMoves.filter((move) => {
+		let hasCorner = false
+		preferredSpots.forEach((spot) => {
+			if (move.solution.indexOf(spot) !== -1) {
+				hasCorner = true
+			}
+		})
+		return hasCorner
+	})
+}
+
+const chooseNextMove = (currentGameBoard, possibleSolutions, aiToken) => {
 
 	// find any battles (score of 2) place token on your own skirmish but then on opponents
-	let opponentToken = (myToken === 'x') ? 'o' : 'x'
-	let myPossibleWins = findTokenPossibleWins(possibleSolutions, myToken)
+	let opponentToken = (aiToken === 'x') ? 'o' : 'x'
+	let myPossibleWins = findTokenPossibleWins(possibleSolutions, aiToken)
 	let opponentPossibleWins = findTokenPossibleWins(possibleSolutions, opponentToken)
 	if (myPossibleWins.length > 0) {
 		return findNullSpot(myPossibleWins[0])
@@ -274,9 +304,13 @@ const chooseNextMove = (currentGameBoard, possibleSolutions, myToken) => {
 		return findNullSpot(opponentPossibleWins[0])
 	}
 
-	// find any skirmishes (score of 1), place token on your own skirmish
-	let myPossibleMoves = findTokenPossibleMoves(possibleSolutions, myToken)
+	// find any skirmishes (score of 1), place token on your own skirmish but favor a corner
+	let myPossibleMoves = findTokenPossibleMoves(possibleSolutions, aiToken)
 	if (myPossibleMoves.length > 0) {
+		let preferCornerMove = preferCornerForScoreOne(myPossibleMoves)
+		if (preferCornerMove.length > 0) {
+			return findNullSpot(preferCornerMove[0])
+		}
 		return findNullSpot(myPossibleMoves[0]) // For more variety I could build an array of null spots and hand them to chooseOutOf
 	}
 
@@ -288,56 +322,41 @@ const chooseNextMove = (currentGameBoard, possibleSolutions, myToken) => {
 	let possibleMoves = whichEmpty(currentGameBoard, [0, 2, 6, 8])
 	if (possibleMoves.length > 0) {
 		let thisMove = chooseOutOf(possibleMoves)
+		console.log(thisMove)
 		return thisMove
 	}
-
-	console.log('this shouldn\'t happen...')
 }
-//chooseNextMove(thisGameBoard, 'x')
 
-const ai = (state) => {
-	let player = state.player
-	let myToken = (player === 'x') ? 'o' : 'x'
-	let turn = state.turn
-	//let turnCount = state.turnCount
-	let currentGameBoard = state.gameBoard
-
-	//on every turn check for draw
-	let possibleSolutions = enhancedSolutionMap(currentGameBoard)
-	//console.log(possibleSolutions)
-	if (possibleSolutions.length === 0) {
-		// this is a draw
-		//console.log('draw')
-		return store.dispatch(setStatus('draw'))
-	}
-	// also if possibleSolutions length is 1 with a score of 1 this is also a draw
-	if (possibleSolutions.length === 1 && possibleSolutions[0].score === 1) {
-		// this is a draw
-		//console.log('draw')
+const referee = (possibleSolutions) => {
+	// check for draws
+	let isDraw = checkForDraws(possibleSolutions)
+	if (isDraw) {
 		return store.dispatch(setStatus('draw'))
 	}
 
-	//on every turn check for win
+	// check for wins
 	let winningToken = checkForWins(possibleSolutions)
 	if (winningToken) {
-		// this is a win
-		//console.log(winningToken, ' wins!')
 		return store.dispatch(setStatus(winningToken))
 	}
+}
 
-	//on computer turn, choose move
-	if (player !== null && myToken === turn) {
-		//console.log('ai plays')
-		//setTimeout(chooseNextMove(currentGameBoard, possibleSolutions, myToken), 3000);
-		let aiPlay = chooseNextMove(currentGameBoard, possibleSolutions, myToken)
-    store.dispatch(setToken(myToken, aiPlay))
-  }
+const ai = (state, possibleSolutions) => {
+	let player = state.player
+	let currentGameBoard = state.gameBoard
+	let aiToken = (player === 'x') ? 'o' : 'x'
+	let aiPlay = chooseNextMove(currentGameBoard, possibleSolutions, aiToken)
+  store.dispatch(setToken(aiToken, aiPlay))
 }
 
 store.subscribe(() => {
 	let state = store.getState()
 	if (state.gameStatus === null) {
-		ai(state)
+		let possibleSolutions = enhancedSolutionMap(state.gameBoard)
+		referee(possibleSolutions)
+		if (state.player !== null && state.player !== state.turn) {
+			ai(state, possibleSolutions)
+		}
 	}
 })
 
@@ -509,16 +528,3 @@ render(
   </Provider>,
   document.getElementById('root')
 );
-
-/*
- * Redux state to console log
- */
-
-console.log('initial state')
-console.log(store.getState())
-store.subscribe(() => console.log(store.getState()))
-
-/*
-store.dispatch(setPlayer('x'))
-store.dispatch(tileClick(0))
-*/
