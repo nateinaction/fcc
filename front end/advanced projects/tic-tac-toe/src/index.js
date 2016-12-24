@@ -279,17 +279,19 @@ const findTokenPossibleMoves = (possibleSolutions, token) => {
 	})
 }
 
-const preferCornerForScoreOne = (possibleMoves) => {
-	let preferredSpots = [0, 2, 6, 8]
-	return possibleMoves.filter((move) => {
-		let hasCorner = false
-		preferredSpots.forEach((spot) => {
-			if (move.solution.indexOf(spot) !== -1) {
-				hasCorner = true
+const findBestBlockingMove = (possibleSolutions, opponentToken) => {
+	console.log(possibleSolutions)
+	let arrObjCount = {}
+	possibleSolutions.forEach((solutionsObj) => {
+		solutionsObj.solution.forEach((location, index) => {
+			if (solutionsObj.currentState[index] === null && solutionsObj.primaryToken === opponentToken) {
+				arrObjCount[location] = arrObjCount[location] ? arrObjCount[location] + 1 : 1;
 			}
 		})
-		return hasCorner
 	})
+	let move = Object.keys(arrObjCount).reduce(function(a, b){ return arrObjCount[a] > arrObjCount[b] ? a : b })
+	console.log(arrObjCount, move)
+	return parseInt(move, 10)
 }
 
 const chooseNextMove = (currentGameBoard, possibleSolutions, aiToken) => {
@@ -304,14 +306,11 @@ const chooseNextMove = (currentGameBoard, possibleSolutions, aiToken) => {
 		return findNullSpot(opponentPossibleWins[0])
 	}
 
-	// find any skirmishes (score of 1), place token on your own skirmish but favor a corner
+	// find any skirmishes (score of 1), rank the best moves
 	let myPossibleMoves = findTokenPossibleMoves(possibleSolutions, aiToken)
 	if (myPossibleMoves.length > 0) {
-		let preferCornerMove = preferCornerForScoreOne(myPossibleMoves)
-		if (preferCornerMove.length > 0) {
-			return findNullSpot(preferCornerMove[0])
-		}
-		return findNullSpot(myPossibleMoves[0]) // For more variety I could build an array of null spots and hand them to chooseOutOf
+		let blockingMove = findBestBlockingMove(possibleSolutions, opponentToken)
+		return blockingMove
 	}
 
 	// place token on center, if not available, on corners
