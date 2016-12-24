@@ -3,7 +3,7 @@ import thunk from 'redux-thunk';
 import React, { PropTypes } from 'react';
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-import { PageHeader, Navbar, Nav, NavItem, Glyphicon, ProgressBar, Modal, FormGroup, ControlLabel, FormControl, Button, InputGroup, Col } from 'react-bootstrap';
+import { PageHeader, Glyphicon, Modal, Button, Col } from 'react-bootstrap';
 import './index.scss';
 
 /*
@@ -13,7 +13,7 @@ import './index.scss';
 {
 	player: null || 'x' || 'o',
 	turn: 'x' || 'o',
-	status: null || 'win' || 'draw',
+	gameStatus: null || 'win' || 'draw',
 	gameBoard: [null, null, 'x',
 							null, 'o', 'x',
 							null, null, 'o']
@@ -48,20 +48,21 @@ const tileClick = (index) => {
     const state = getState()
     let turn = state.turn
     let player = state.player
-    let status = state.status
+    let gameStatus = state.gameStatus
+    let clickIndex = state.gameBoard[index]
 
-    if (turn === player && status === null) {
+    if (turn === player && gameStatus === null && clickIndex === null) {
     	return dispatch(setToken(player, index))
     }
 	}
 }
 
-const setStatus = (status) => {
+const setStatus = (gameStatus) => {
 	let message = 'It looks like this game is a draw.'
-	if (status !== 'draw') {
-		message = 'It looks like ' + status + ' won this game.'
+	if (gameStatus !== 'draw') {
+		message = 'It looks like ' + gameStatus + ' won this game.'
 	}
-	console.log(status)
+	//console.log(gameStatus)
 
 	return {
 		type: 'SET_STATUS',
@@ -99,7 +100,7 @@ const turn = (state = 'x', action) => {
 	}
 }
 
-const status = (state = null, action) => {
+const gameStatus = (state = null, action) => {
 	switch (action.type) {
 		case 'SET_STATUS':
 			return action.message
@@ -129,7 +130,7 @@ const gameBoard = (state = gameBoardInitialState(), action) => {
 const ticTacToeApp = combineReducers({
 	player,
 	turn,
-	status,
+	gameStatus,
 	gameBoard
 })
 
@@ -142,12 +143,6 @@ let store = createStore(ticTacToeApp, applyMiddleware(thunk))
 /*
  * Helper Fns
  */
-
-//var thisGameBoard = [null,null,null,null,null,null,null,null,null] // empty
-//var thisGameBoard = [null,null,null,null,'x',null,null,null,null] // center taken
-//var thisGameBoard = ['o','x',null,'x','o',null,null,null,null] // win on next 'o' or block on next 'x'
-//var thisGameBoard = ['x','x','o','x','o','o','o',null,null] // winning o
-//var thisGameBoard = ['x','x','o','x','o','o',null,null,null] // two possible wins
 
 const isEmpty = (currentGameBoard, index) => {
 	return (currentGameBoard[index] === null)
@@ -300,13 +295,6 @@ const chooseNextMove = (currentGameBoard, possibleSolutions, myToken) => {
 }
 //chooseNextMove(thisGameBoard, 'x')
 
-store.subscribe(() => {
-	let state = store.getState()
-	if (state.status === null) {
-		ai(state)
-	}
-})
-
 const ai = (state) => {
 	let player = state.player
 	let myToken = (player === 'x') ? 'o' : 'x'
@@ -316,16 +304,16 @@ const ai = (state) => {
 
 	//on every turn check for draw
 	let possibleSolutions = enhancedSolutionMap(currentGameBoard)
-	console.log(possibleSolutions)
+	//console.log(possibleSolutions)
 	if (possibleSolutions.length === 0) {
 		// this is a draw
-		console.log('draw')
+		//console.log('draw')
 		return store.dispatch(setStatus('draw'))
 	}
 	// also if possibleSolutions length is 1 with a score of 1 this is also a draw
 	if (possibleSolutions.length === 1 && possibleSolutions[0].score === 1) {
 		// this is a draw
-		console.log('draw')
+		//console.log('draw')
 		return store.dispatch(setStatus('draw'))
 	}
 
@@ -333,18 +321,25 @@ const ai = (state) => {
 	let winningToken = checkForWins(possibleSolutions)
 	if (winningToken) {
 		// this is a win
-		console.log(winningToken, ' wins!')
+		//console.log(winningToken, ' wins!')
 		return store.dispatch(setStatus(winningToken))
 	}
 
 	//on computer turn, choose move
 	if (player !== null && myToken === turn) {
-		console.log('ai plays')
+		//console.log('ai plays')
 		//setTimeout(chooseNextMove(currentGameBoard, possibleSolutions, myToken), 3000);
 		let aiPlay = chooseNextMove(currentGameBoard, possibleSolutions, myToken)
     store.dispatch(setToken(myToken, aiPlay))
   }
 }
+
+store.subscribe(() => {
+	let state = store.getState()
+	if (state.gameStatus === null) {
+		ai(state)
+	}
+})
 
 /*
  * React Components
@@ -358,6 +353,9 @@ const SelectXButton = (props) => (
 		Play as <Glyphicon glyph='remove' />
 	</Button>
 )
+SelectXButton.propTypes = {
+	onSetPlayer: PropTypes.func.isRequired
+}
 
 const SelectOButton = (props) => (
 	<Button
@@ -367,6 +365,9 @@ const SelectOButton = (props) => (
 		Play as <Glyphicon glyph='unchecked' />
 	</Button>
 )
+SelectOButton.propTypes = {
+	onSetPlayer: PropTypes.func.isRequired
+}
 
 const SettingsModal = (props) => {
 	let showModal = (props.player === null)
@@ -383,35 +384,41 @@ const SettingsModal = (props) => {
 	  </Modal>
 	)
 }
+SettingsModal.propTypes = {
+	player: PropTypes.string,
+	handleSetPlayer: PropTypes.func.isRequired
+}
 
-const GameBoard = (props) => {
-	return (
-		<div id='game-board'>
-		{props.gameBoard.map((tile, index) => {
-			let tileIcon = <span />
-			if (tile === 'x') {
-				tileIcon = <Glyphicon glyph='remove' />
-			} else if (tile === 'o') {
-				tileIcon = <Glyphicon glyph='unchecked' />
-			}
-			return (
-				<div
-					key={index}
-					className='tile'
-					onClick={() => props.handleTileClick(index)} >
-					{tileIcon}
-				</div>
-			)
-		})}
-		</div>
-	)
+const GameBoard = (props) => (
+	<div id='game-board'>
+	{props.gameBoard.map((tile, index) => {
+		let tileIcon = <span />
+		if (tile === 'x') {
+			tileIcon = <Glyphicon glyph='remove' />
+		} else if (tile === 'o') {
+			tileIcon = <Glyphicon glyph='unchecked' />
+		}
+		return (
+			<div
+				key={index}
+				className='tile'
+				onClick={() => props.handleTileClick(index)} >
+				{tileIcon}
+			</div>
+		)
+	})}
+	</div>
+)
+GameBoard.propTypes = {
+	gameBoard: PropTypes.array.isRequired,
+	handleTileClick: PropTypes.func.isRequired
 }
 
 const Message = (props) => {
 	if (props.message !== null) {
 		return (
 			<div>
-				<Col md={2} mdOffset={5}>
+				<Col xs={12} md={2} mdOffset={5}>
 					<h3>{props.message}</h3>
 					<Button
 						bsStyle='primary'
@@ -424,6 +431,10 @@ const Message = (props) => {
 		)
 	}
 	return null
+}
+Message.propTypes = {
+	message: PropTypes.string,
+	handleResetClick: PropTypes.func.isRequired
 }
 
 /*
@@ -461,7 +472,7 @@ const SettingsModalContainer = connect(
 )(SettingsModal)
 
 const mapStateToPropsThree = (state) => ({
-	message: state.status
+	message: state.gameStatus
 })
 
 const mapDispatchToPropsThree = (dispatch) => ({
