@@ -313,17 +313,23 @@ const chooseNextMove = (currentGameBoard, possibleSolutions, aiToken) => {
 		return blockingMove
 	}
 
-	// place token on center, if not available, on corners
-	if (isEmpty(currentGameBoard, 4)) {
-		return 4
+	// if opponent took a corner, take ...
+	// tried: center, opposite corner, adjacent square, adjacent corner, opposite adjacent square
+	if (!isEmpty(currentGameBoard, 0)) {
+		return chooseOutOf([5, 7])
+	} else if (!isEmpty(currentGameBoard, 2)) {
+		return chooseOutOf([3, 7])
+	} else if (!isEmpty(currentGameBoard, 6)) {
+		return chooseOutOf([1, 5])
+	} else if (!isEmpty(currentGameBoard, 8)) {
+		return chooseOutOf([1, 3])
 	}
-
-	let possibleMoves = whichEmpty(currentGameBoard, [0, 2, 6, 8])
-	if (possibleMoves.length > 0) {
-		let thisMove = chooseOutOf(possibleMoves)
-		console.log(thisMove)
-		return thisMove
+	// if opponent took center, take a corner
+	if (!isEmpty(currentGameBoard, 4)) {
+		return chooseOutOf([0, 2, 6, 8])
 	}
+	// else take center
+	return 4
 }
 
 const referee = (possibleSolutions) => {
