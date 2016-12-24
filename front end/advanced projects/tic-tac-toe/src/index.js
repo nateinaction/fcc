@@ -3,7 +3,7 @@ import thunk from 'redux-thunk';
 import React, { PropTypes } from 'react';
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-import { PageHeader, Glyphicon, Modal, Button, Col } from 'react-bootstrap';
+import { PageHeader, Glyphicon, Modal, Button, Row, Col, Alert } from 'react-bootstrap';
 import './index.scss';
 
 /*
@@ -437,15 +437,16 @@ const Message = (props) => {
 	if (props.message !== null) {
 		return (
 			<div>
-				<Col xs={12} md={2} mdOffset={5}>
-					<h3>{props.message}</h3>
-					<Button
-						bsStyle='primary'
-						block
-						onClick={() => props.handleResetClick()} >
-						Try again?
-					</Button>
-				</Col>
+				<Row>
+					<Col xs={12} sm={8} smOffset={2} md={4} mdOffset={4}>
+						<Alert bsStyle="info" onDismiss={() => props.handleResetClick()}>
+		          <h4>{props.message}</h4>
+		          <p>
+		            <Button bsStyle="primary" onClick={() => props.handleResetClick()}>Try again?</Button>
+		          </p>
+		        </Alert>
+					</Col>
+				</Row>
 			</div>
 		)
 	}
@@ -512,9 +513,9 @@ const MessageContainer = connect(
 const App = (props) => (
 	<div id='App'>
 		<PageHeader>Tic-Tac-Toe <small> with React & Redux</small></PageHeader>
+		<MessageContainer />
 		<SettingsModalContainer />
 		<GameBoardContainer />
-		<MessageContainer />
 	</div>
 )
 
