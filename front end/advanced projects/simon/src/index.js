@@ -3,7 +3,7 @@ import thunk from 'redux-thunk';
 import React, { PropTypes } from 'react'
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-import { Grid, Row, Col, Button, Navbar, Nav, NavItem, Glyphicon } from 'react-bootstrap'
+import { Grid, Row, Col, Navbar, Nav, NavItem, Glyphicon } from 'react-bootstrap'
 import './index.scss'
 import blueSound from '../public/simonSound1.mp3'
 import yellowSound from '../public/simonSound2.mp3'
@@ -15,12 +15,13 @@ import greenSound from '../public/simonSound4.mp3'
  */
 /*
 {
-	turn: 'computer',
+	turn: 'computer', // 'player', 'playing'
 	level: 1,
 	sequence: [0,0,3,1,2],
 	player: [0,0...],
 	strict: true,
-	button: [false, true, false, false]
+	active: {id: 4, played: false, timestamp: 100000},
+	timestamp: 100001
 }
 */
 
@@ -31,23 +32,24 @@ import greenSound from '../public/simonSound4.mp3'
 const clearAll = () => ({
 	type: 'CLEAR_ALL'
 })
-
+/*
 const clearPlayer = () => ({
 	type: 'CLEAR_PLAYER'
 })
-
+*/
 const setSequence = (sequence) => ({
 	type: 'SET_SEQUENCE',
 	sequence
 })
-
+/*
 const addToPlayer = (item) => ({
 	type: 'ADD_TO_PLAYER',
 	item
 })
-
-const toggleTurn = () => ({
-	type: 'TOGGLE_TURN'
+*/
+const setTurn = (turn) => ({
+	type: 'SET_TURN',
+	turn
 })
 
 const toggleStrict = () => ({
@@ -55,20 +57,34 @@ const toggleStrict = () => ({
 })
 
 const buttonClick = (id) => ({
-	type: 'TOGGLE_BUTTON',
+	type: 'ACTIVATE_BUTTON',
+	time: Date.now(),
 	id
+})
+
+const deactivateButton = () => ({
+	type: 'DEACTIVATE_BUTTON'
+})
+
+const updateTimestamp = () => ({
+	type: 'SET_TIMESTAMP',
+	time: Date.now()
+})
+
+const soundPlayed = () => ({
+	type: 'SOUND_PLAYED'
 })
 
 /*
  * Redux Reducers
  */
 
-const turn = (state = 'off', action) => {
+const turn = (state = null, action) => {
 	switch (action.type) {
 		case 'CLEAR_ALL':
- 			return 'off'
-		case 'TOGGLE_TURN':
-			return state === 'computer' ? 'player' : 'computer'
+ 			return null
+		case 'SET_TURN':
+ 			return action.turn
 		default:
 			return state
 	}
@@ -118,17 +134,33 @@ const strict = (state = false, action) => {
 	}
 }
 
-const defaultButtonState = Array(4).fill(false)
-const button = (state = defaultButtonState, action) => {
+const activeDefault = {id: null, played: false, timestamp: null}
+const active = (state = activeDefault, action) => {
 	switch (action.type) {
 		case 'CLEAR_ALL':
 		case 'CLEAR_PLAYER':
 		case 'TOGGLE_TURN':
-			return defaultButtonState
-		case 'TOGGLE_BUTTON':
-			return state.map((bool, index) => (
-				(index === action.id) ? !bool : false
-			))
+		case 'DEACTIVATE_BUTTON':
+			return activeDefault
+		case 'ACTIVATE_BUTTON':
+			return Object.assign({}, state, {
+				id: action.id,
+				played: false,
+				timestamp: action.time
+			})
+		case 'SOUND_PLAYED':
+			return Object.assign({}, state, {
+				played: true
+			})
+		default:
+			return state
+	}
+}
+
+const timestamp = (state = Date.now(), action) => {
+	switch (action.type) {
+		case 'SET_TIMESTAMP':
+			return action.time
 		default:
 			return state
 	}
@@ -140,7 +172,8 @@ const simonApp = combineReducers({
 	sequence,
 	player,
 	strict,
-	button
+	active,
+	timestamp
 })
 
 /*
@@ -155,7 +188,21 @@ let store = createStore(simonApp, applyMiddleware(thunk))
 
 console.log('initial state')
 console.log(store.getState())
-store.subscribe(() => console.log(store.getState()))
+let prevState = null
+store.subscribe(() => { // log statement removes timestamp tick
+	let {timestamp, ...state} = store.getState()
+
+	if (prevState === null) {
+		prevState = state
+	} else {
+		Object.keys(prevState).forEach((key) => {
+			if (prevState[key] !== state[key]) {
+				console.log(state)
+				prevState = state
+			}
+		})
+	}
+})
 
 /*
  * Helper Fns
@@ -165,34 +212,36 @@ const playSoundHelper = (number) => {
 	document.getElementById('sound-' + number).play()
 }
 
-const audioController = (turn, sequence, level) => {
-	let interval = null
-	let n = 0
-	if (turn === 'computer' && interval === null) {
-		interval = setInterval(() => {
-			let id = sequence[n]
-			store.dispatch(buttonClick(id))
-			if (n < level - 1) {
-				n += 1
-			} else {
-				clearInterval(interval)
-				interval = null
-				store.dispatch(toggleTurn())
-			}
-    }, 750)
-	} else {
-		clearInterval(interval)
-		interval = null
+let count = 0
+let playerTime = null
+const sequencePlayer = (turn, sequence, level, timestamp) => {
+	if (turn === 'computer') {
+		playerTime = Date.now()
+		return store.dispatch(setTurn('playing sequence'))
+	}
+	if (turn === 'playing sequence') {
+		if (playerTime + 800 < timestamp && count < level) {
+			let id = sequence[count]
+			playerTime = Date.now()
+			count += 1
+			return store.dispatch(buttonClick(id))
+		} else if (playerTime + 800 < timestamp && count >= level) {
+			count = 0
+			return store.dispatch(setTurn('player'))
+		}
 	}
 }
 
-const buttonController = (button) => {
-	button.forEach((bool, index) => {
-		if (bool === true) {
-			playSoundHelper(index)
-			//store.dispatch(buttonClick(index))
+const buttonController = (active, timestamp) => {
+	if (active.id !== null) {
+		if (!active.played) {
+			playSoundHelper(active.id)
+			return store.dispatch(soundPlayed())
 		}
-	})
+		if (active.timestamp + 300 < timestamp) {
+			return store.dispatch(deactivateButton())
+		}
+	}
 }
 
 const newSequenceHelper = () => {
@@ -210,10 +259,10 @@ const dispatchNewSequence = (sequence) => {
 
 const gameControllerSubscribe = () => {
 	store.subscribe(() => {
-		let {turn, level, sequence, player, strict, button} = store.getState()
+		let {turn, level, sequence, active, timestamp} = store.getState()
 
-		audioController(turn, sequence, level)
-		buttonController(button)
+		sequencePlayer(turn, sequence, level, timestamp)
+		buttonController(active, timestamp)
 
 		// if sequence is cleared, dispatch new sequence
 		dispatchNewSequence(sequence)
@@ -224,6 +273,14 @@ const initializeSimon = () => {
 	let sequence = store.getState()
 	dispatchNewSequence(sequence)
 }
+
+const gameTick = () => {
+	// least ugly solution?
+	setInterval(() => {
+		return store.dispatch(updateTimestamp())
+	}, 100)
+}
+gameTick()
 initializeSimon()
 gameControllerSubscribe()
 
@@ -246,29 +303,34 @@ gameControllerSubscribe()
 
 const GameButton = (props) => {
 	let classes = 'game-button-' + props.id
-	classes = (props.isActive) ? classes + ' active-button' : classes
-	console.log(props.isActive)
+	classes = (props.activeId === props.id) ? classes + ' active-button' : classes
 	return <div className={classes} onClick={() => props.handleButtonClick(props.id)} />
 }
 GameButton.propTypes =  {
 	id: PropTypes.number.isRequired,
-	isActive: PropTypes.bool.isRequired,
+	activeId: PropTypes.number,
 	handleButtonClick: PropTypes.func.isRequired
 }
 
-const GameLayout = (props) => (
-	<Grid>
-		<Row>
-			{props.button.map((bool, index) => (
-				<Col key={index} xs={6}>
-					<GameButton id={index} isActive={bool} handleButtonClick={props.handleButtonClick} />
-				</Col>
-			))}
-		</Row>
-	</Grid>
-)
+const GameLayout = (props) => {
+	let buttonIds = [0, 1, 2, 3]
+	return (
+		<Grid>
+			<Row>
+				{buttonIds.map((index) => (
+					<Col key={index} xs={6}>
+						<GameButton
+							id={index}
+							activeId={props.active.id}
+							handleButtonClick={props.handleButtonClick} />
+					</Col>
+				))}
+			</Row>
+		</Grid>
+	)
+}
 GameLayout.propTypes =  {
-	button: PropTypes.array.isRequired,
+	active: PropTypes.object.isRequired,
 	handleButtonClick: PropTypes.func.isRequired
 }
 
@@ -292,14 +354,14 @@ StrictButton.propTypes =  {
 }
 
 const PlayResetButton = (props) => {
-	if (props.turn === 'off') {
+	if (props.turn === null) {
 		return <NavItem onClick={props.handlePlayClick}><Glyphicon glyph='play' /> Play</NavItem>
 	} else {
 		return <NavItem onClick={props.handleResetClick}><Glyphicon glyph='repeat' /> Restart</NavItem>
 	}
 }
 PlayResetButton.propTypes =  {
-	turn: PropTypes.string.isRequired,
+	turn: PropTypes.string,
 	handlePlayClick: PropTypes.func.isRequired,
 	handleResetClick: PropTypes.func.isRequired
 }
@@ -328,7 +390,7 @@ const ControlBar = (props) => (
   </Navbar>
 )
 ControlBar.propTypes =  {
-	turn: PropTypes.string.isRequired,
+	turn: PropTypes.string,
 	level: PropTypes.number.isRequired,
 	strict: PropTypes.bool.isRequired,
 	handlePlayClick: PropTypes.func.isRequired,
@@ -348,7 +410,7 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => ({
 	handlePlayClick: () => {
-		dispatch(toggleTurn())
+		dispatch(setTurn('computer'))
 	},
 	handleStrictClick: () => {
 		dispatch(toggleStrict())
@@ -364,7 +426,7 @@ const ControlBarContainer = connect(
 )(ControlBar)
 
 const mapStateToPropsTwo = (state) => ({
-	button: state.button
+	active: state.active
 })
 
 const mapDispatchToPropsTwo = (dispatch) => ({
