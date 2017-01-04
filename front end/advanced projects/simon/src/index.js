@@ -3,7 +3,7 @@ import thunk from 'redux-thunk';
 import React, { PropTypes } from 'react'
 import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
-import { Grid, Row, Col, Navbar, Nav, NavItem, Glyphicon } from 'react-bootstrap'
+import { Grid, Row, Col, Navbar, Nav, NavItem, Glyphicon, Modal, Button } from 'react-bootstrap'
 import './index.scss'
 import blueSound from '../public/simonSound1.mp3'
 import yellowSound from '../public/simonSound2.mp3'
@@ -41,12 +41,12 @@ const setSequence = (sequence) => ({
 	type: 'SET_SEQUENCE',
 	sequence
 })
-/*
+
 const addToPlayer = (item) => ({
 	type: 'ADD_TO_PLAYER',
 	item
 })
-*/
+
 const setTurn = (turn) => ({
 	type: 'SET_TURN',
 	turn
@@ -56,7 +56,7 @@ const toggleStrict = () => ({
 	type: 'TOGGLE_STRICT'
 })
 
-const buttonClick = (id) => ({
+const activateButton = (id) => ({
 	type: 'ACTIVATE_BUTTON',
 	time: Date.now(),
 	id
@@ -66,6 +66,17 @@ const deactivateButton = () => ({
 	type: 'DEACTIVATE_BUTTON'
 })
 
+const buttonClick = (id) => (
+	(dispatch, getState) => {
+    let {turn} = getState()
+
+		if (turn === 'player') {
+			dispatch((addToPlayer(id)))
+		}
+  	dispatch((activateButton(id)))
+	}
+)
+
 const updateTimestamp = () => ({
 	type: 'SET_TIMESTAMP',
 	time: Date.now()
@@ -73,6 +84,10 @@ const updateTimestamp = () => ({
 
 const soundPlayed = () => ({
 	type: 'SOUND_PLAYED'
+})
+
+const nextLevel = () => ({
+	type: 'NEXT_LEVEL'
 })
 
 /*
@@ -95,7 +110,7 @@ const level = (state = 1, action) => {
  		case 'CLEAR_ALL':
 		case 'CLEAR_PLAYER':
  			return 1
- 		case 'ADD_TO_PLAYER':
+ 		case 'NEXT_LEVEL':
  			return state + 1
  		default:
  			return state
@@ -117,6 +132,7 @@ const player = (state = [], action) => {
 	switch (action.type) {
 		case 'CLEAR_ALL':
 		case 'CLEAR_PLAYER':
+		case 'SET_TURN':
 			return []
 		case 'ADD_TO_PLAYER':
 			return [...state, action.item]
@@ -190,7 +206,9 @@ console.log('initial state')
 console.log(store.getState())
 let prevState = null
 store.subscribe(() => { // log statement removes timestamp tick
-	let {timestamp, ...state} = store.getState()
+	let state = Object.assign({}, store.getState(), {
+		timestamp: null
+	})
 
 	if (prevState === null) {
 		prevState = state
@@ -220,12 +238,16 @@ const sequencePlayer = (turn, sequence, level, timestamp) => {
 		return store.dispatch(setTurn('playing sequence'))
 	}
 	if (turn === 'playing sequence') {
-		if (playerTime + 800 < timestamp && count < level) {
+		let interval = 1000
+		interval = (level > 4) ? 800 : interval
+		interval = (level > 9) ? 650 : interval
+		interval = (level > 13) ? 550 : interval
+		if (playerTime + interval < timestamp && count < level) {
 			let id = sequence[count]
 			playerTime = Date.now()
 			count += 1
-			return store.dispatch(buttonClick(id))
-		} else if (playerTime + 800 < timestamp && count >= level) {
+			return store.dispatch(activateButton(id))
+		} else if (playerTime + interval < timestamp && count >= level) {
 			count = 0
 			return store.dispatch(setTurn('player'))
 		}
@@ -257,12 +279,57 @@ const dispatchNewSequence = (sequence) => {
 	}
 }
 
+const theJudge = (turn, sequence, level, player) => {
+	if (turn === 'player') {
+		let playerLength = player.length
+		if (playerLength < level) {
+			let isEqual = player.map((item, index) => {
+				return (sequence[index] === item)
+			})
+			if (isEqual.indexOf(false) !== -1) {
+				return store.dispatch(setTurn('fail'))
+			}
+		}
+		if (playerLength === level) {
+			let isEqual = player.map((item, index) => {
+				return (sequence[index] === item)
+			})
+			if (isEqual.indexOf(false) === -1) {
+				if (level < 20) {
+					store.dispatch(nextLevel())
+					return store.dispatch(setTurn('computer'))
+				} else {
+					return store.dispatch(setTurn('win'))
+				}
+			} else if (isEqual.indexOf(false) !== -1) {
+				return store.dispatch(setTurn('fail'))
+			}
+		}
+		if (playerLength > level) {
+			console.log('something happened')
+			return store.dispatch(setTurn('computer'))
+		}
+	}
+}
+
+const failCheck = (turn, strict) => {
+	if (turn === 'fail') {
+		if (strict) {
+			store.dispatch(setTurn('failModal'))
+		} else {
+			store.dispatch(setTurn('computer'))
+		}
+	}
+}
+
 const gameControllerSubscribe = () => {
 	store.subscribe(() => {
-		let {turn, level, sequence, active, timestamp} = store.getState()
+		let {turn, level, strict, sequence, player, active, timestamp} = store.getState()
 
 		sequencePlayer(turn, sequence, level, timestamp)
 		buttonController(active, timestamp)
+		theJudge(turn, sequence, level, player)
+		failCheck(turn, strict)
 
 		// if sequence is cleared, dispatch new sequence
 		dispatchNewSequence(sequence)
@@ -299,6 +366,51 @@ gameControllerSubscribe()
 			))}
 		</div>
 	)
+}
+
+const CloseButton = (props) => (
+	<Button
+  	bsStyle="primary"
+  	block={true}
+  	onClick={() => {
+  		return props.onHideModal()
+  	}}>
+    Close
+  </Button>
+)
+CloseButton.propTypes = {
+	onHideModal: PropTypes.func.isRequired
+}
+
+const StatusModal = (props) => {
+	let showModal = false
+	let title = 'Ooops!'
+	let message = 'Looks like you missed one. Want to try again?'
+	if (props.turn === 'failModal') {
+		showModal = true
+	}
+	if (props.turn === 'win') {
+		title = 'Congradulations!'
+		message = 'Wow! Who knew you had such a great memory? Want to try again?'
+		showModal = true
+	}
+	return (
+	  <Modal show={showModal} onHide={props.handleHideModal}>
+	    <Modal.Header closeButton>
+	      <Modal.Title>{title}</Modal.Title>
+	    </Modal.Header>
+	    <Modal.Body>
+	      {message}
+	    </Modal.Body>
+			<Modal.Footer>
+				<CloseButton onHideModal={props.handleHideModal} />
+			</Modal.Footer>
+	  </Modal>
+	)
+}
+StatusModal.propTypes = {
+	turn: PropTypes.string,
+	handleHideModal: PropTypes.func.isRequired
 }
 
 const GameButton = (props) => {
@@ -440,10 +552,26 @@ const GameLayoutContainer = connect(
 	mapDispatchToPropsTwo
 )(GameLayout)
 
+const mapStateToPropsThree = (state) => ({
+	turn: state.turn
+})
+
+const mapDispatchToPropsThree = (dispatch) => ({
+	handleHideModal: () => {
+		dispatch(clearAll())
+	}
+})
+
+const StatusModalContainer = connect(
+	mapStateToPropsThree,
+	mapDispatchToPropsThree
+)(StatusModal)
+
 const App = (props) => (
 	<div className="App">
 		<GameLayoutContainer />
 		<ControlBarContainer />
+		<StatusModalContainer />
 	  <AudioComponents />
   </div>
 )
