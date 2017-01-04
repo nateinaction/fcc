@@ -5,10 +5,12 @@ import { Provider, connect } from 'react-redux'
 import { render } from 'react-dom';
 import { Grid, Row, Col, Navbar, Nav, NavItem, Glyphicon, Modal, Button } from 'react-bootstrap'
 import './index.scss'
+
 import blueSound from '../public/simonSound1.mp3'
 import yellowSound from '../public/simonSound2.mp3'
 import redSound from '../public/simonSound3.mp3'
 import greenSound from '../public/simonSound4.mp3'
+const sounds = [blueSound, yellowSound, redSound, greenSound]
 
 /*
  * Example Object
@@ -226,7 +228,14 @@ store.subscribe(() => { // log statement removes timestamp tick
  * Helper Fns
  */
 
+const loadAudioHelper = () => { // fixes issue on mobile safari which loads only on click
+	sounds.forEach((url, index) => {
+		document.getElementById('sound-' + index).load()
+	})
+}
+
 const playSoundHelper = (number) => {
+	document.getElementById('sound-' + number).currentTime = 0.1
 	document.getElementById('sound-' + number).play()
 }
 
@@ -240,14 +249,14 @@ const sequencePlayer = (turn, sequence, level, timestamp) => {
 	if (turn === 'playing sequence') {
 		let interval = 1000
 		interval = (level > 4) ? 800 : interval
-		interval = (level > 9) ? 650 : interval
-		interval = (level > 13) ? 550 : interval
+		interval = (level > 8) ? 600 : interval
+		interval = (level > 12) ? 500 : interval
 		if (playerTime + interval < timestamp && count < level) {
 			let id = sequence[count]
 			playerTime = Date.now()
 			count += 1
 			return store.dispatch(activateButton(id))
-		} else if (playerTime + interval < timestamp && count >= level) {
+		} else if (count >= level) {
 			count = 0
 			return store.dispatch(setTurn('player'))
 		}
@@ -355,18 +364,15 @@ gameControllerSubscribe()
  * React Presentational Components
  */
 
- const AudioComponents = () => {
-	let sounds = [blueSound, yellowSound, redSound, greenSound]
-	return (
-		<div className='audio-components'>
-			{sounds.map((thisSound, index) => (
-				<audio key={index} id={'sound-' + index} src={sounds[index]} preload='auto'>
-					<p>Your browser does not support the <code>audio</code> element.</p>
-				</audio>
-			))}
-		</div>
-	)
-}
+ const AudioComponents = () => (
+	<div className='audio-components'>
+		{sounds.map((thisSound, index) => (
+			<audio key={index} id={'sound-' + index} src={sounds[index]} preload='auto'>
+				<p>Your browser does not support the <code>audio</code> element.</p>
+			</audio>
+		))}
+	</div>
+)
 
 const CloseButton = (props) => (
 	<Button
@@ -482,11 +488,13 @@ const ControlBar = (props) => (
 	<Navbar inverse collapseOnSelect fixedBottom>
     <Navbar.Header>
       <Navbar.Brand>
-        Simon
+        Simon Game
       </Navbar.Brand>
       <Navbar.Toggle />
     </Navbar.Header>
     <Navbar.Collapse>
+			<LevelCounter
+				level={props.level} />
     	<Nav>
       	<PlayResetButton
       		turn={props.turn}
@@ -495,8 +503,6 @@ const ControlBar = (props) => (
       	<StrictButton
 					strict={props.strict}
       		handleStrictClick={props.handleStrictClick} />
-				<LevelCounter
-      		level={props.level} />
       </Nav>
     </Navbar.Collapse>
   </Navbar>
@@ -522,6 +528,7 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => ({
 	handlePlayClick: () => {
+		loadAudioHelper()
 		dispatch(setTurn('computer'))
 	},
 	handleStrictClick: () => {
